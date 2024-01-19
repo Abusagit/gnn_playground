@@ -312,6 +312,7 @@ def main():
     print("Successfully created graphs")
     
     if model_type == "GBDT":
+        import joblib
         print("The mode is GBDT")
         from xgboost import XGBClassifier
         from utils import get_features_and_labels_from_a_graph
@@ -325,7 +326,7 @@ def main():
         logits = model.predict_proba(X_test)[:, 1].reshape(-1)
         id2logits = dict(zip(range(X_test.shape[0]), logits))
         
-        model.save("checkpoints/xgboost_model.bin")
+        joblib.dump(model, "checkpoints/xgboost_model.bin")
         
     else:
         print("The mode is GNN")
