@@ -22,7 +22,7 @@ from nirvana_utils import copy_snapshot_to_out, copy_out_to_snapshot ###
 
 OUTPUT_FILE_NAME = "id2logits_py_dict.pkl"
 
-DEVICE = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 sys.path.append("./")
 
@@ -168,10 +168,7 @@ class TrainEval:
             
             labels.append(true_labels.cpu())
             output_nodes_indices.append(output_nodes.cpu())
-            predictions.append(logits.cpu())
-            
-            # breakpoint()
-                        
+            predictions.append(logits.cpu())                        
             
             tk.set_postfix({"Loss": "%6f" % float(total_loss / t)})
             
