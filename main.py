@@ -222,9 +222,11 @@ class TrainEval:
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Graph Neural Network for fraud prediction")
     parser.add_argument("--datadir", type=Path, help="Directory with data", default="./data")
-    parser.add_argument("--mode", type=str, choices=["GBDT", "GNN"], 
+    parser.add_argument("--model_type", type=str, choices=["GBDT", "GNN"], 
                         default="GBDT_ready_data",
                         help="The direction of a program workflow")
+    
+    parser.add_argument("--mode", choices=["training", "inference"], default="training")
     
     parser.add_argument("--data_type", type=str, 
                         choices=["dglgraph", "json"],
@@ -283,8 +285,9 @@ def main():
     copy_snapshot_to_out("checkpoints")
     
     datadir: Path = args.datadir
-    mode: str = args.mode
+    model_type: str = args.model_type
     data_dtype: str = args.data_type
+    mode: str = args.mode
     
     print("Device is ", DEVICE)
     
@@ -308,10 +311,9 @@ def main():
     
     print("Successfully created graphs")
     
-    if mode == "GBDT":
+    if model_type == "GBDT":
         print("The mode is GBDT")
         from xgboost import XGBClassifier
-        
         from utils import get_features_and_labels_from_a_graph
         
         X_train, y_train = get_features_and_labels_from_a_graph(graph_train)
@@ -320,16 +322,17 @@ def main():
         
         model = XGBClassifier()
         model.fit(X_train, y_train)
-
         logits = model.predict_proba(X_test)[:, 1].reshape(-1)
         id2logits = dict(zip(range(X_test.shape[0]), logits))
+        
+        model.save("checkpoints/xgboost_model.bin")
         
     else:
         print("The mode is GNN")
         from models.gnn_initial_and_plre import create_graph_model
         
         MODEL_PARAMS.update(dict(num_input_features=num_input_features))
-        model = create_graph_model(model_name=mode, model_params=MODEL_PARAMS).to(DEVICE)
+        model = create_graph_model(model_name=model_type, model_params=MODEL_PARAMS).to(DEVICE)
         
         
         
