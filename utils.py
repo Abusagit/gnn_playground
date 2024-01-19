@@ -59,7 +59,7 @@ def construct_subgraph_from_blocks(blocks: list[Any],
     `node_attributes_to_copy`: list of names of node attributes to copy to a new graph
     """
     
-    merged_block = deepcopy(dgl.merge([dgl.block_to_graph(b) for b in blocks])).to(device)
+    merged_block = deepcopy(dgl.merge([dgl.block_to_graph(b) for b in blocks]))
     
     row_coords, col_coords = merged_block.edges()
     
@@ -71,8 +71,10 @@ def construct_subgraph_from_blocks(blocks: list[Any],
 
     # create mask marking only destination nodes, which are needed for 
     num_of_nodes = new_graph.num_nodes()
-    output_mask = torch.zeros(num_of_nodes).bool().to(device)
+    output_mask = torch.zeros(num_of_nodes).bool()
     output_mask[:batch_size] = True
-    new_graph.ndata[OUTPUT_MASK_NAME] = output_mask
+    new_graph.ndata[OUTPUT_MASK_NAME] = output_mask.to(device)
+    
+    del merged_block
     
     return new_graph.to(device)

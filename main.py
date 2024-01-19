@@ -20,16 +20,16 @@ from utils import init_dataloader, construct_subgraph_from_blocks
 from nirvana_utils import copy_snapshot_to_out, copy_out_to_snapshot ###
 ##################### Nirvana ##########################################
 
+OUTPUT_FILE_NAME = "id2logits_py_dict.pkl"
 
-
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+DEVICE = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
 
 sys.path.append("./")
 
 
 class TrainEval:
     def __init__(self, model, train_dataloader, val_dataloader, optimizer, criterion, device, 
-                 batch_size, num_epochs, predictions_test_file, test_dataloader=None, val_every_steps:int=5, early_stopping_steps:int=40):
+                 batch_size, num_epochs, test_dataloader=None, val_every_steps:int=5, early_stopping_steps:int=40):
         
         self.model = model
         self.train_dataloader = train_dataloader
@@ -40,7 +40,6 @@ class TrainEval:
         self.epoch = num_epochs
         self.device = device
         self.batch_size = batch_size
-        self.predictions_test_file = predictions_test_file
         self.val_every_steps = val_every_steps
         self.early_stopping_steps = early_stopping_steps
         
@@ -52,6 +51,7 @@ class TrainEval:
         output_nodes_mask = subgraph.ndata[OUTPUT_MASK_NAME]
         input_features = subgraph.ndata[FEATURES_DATA_NAME]
         all_output_mask = subgraph.ndata[MASK_DATA_NAME]
+        
 
         all_logits = self.model(subgraph, input_features)
         output_nodes_logits = all_logits[output_nodes_mask]
@@ -93,9 +93,9 @@ class TrainEval:
         self.model.train()
         total_loss = 0.0
         tk = tqdm(self.train_dataloader, 
-                  desc="EPOCH" + "[TRAIN]" + str(current_epoch + 1) + "/" + str(self.epoch))
+                  desc="EPOCH" + "[TRAIN]" + str(current_epoch) + "/" + str(self.epoch))
 
-        for t, data in enumerate(tk):
+        for t, data in enumerate(tk, 1):
             
             subgraph: dgl.DGLGraph = self.get_subgraph_from_data(data)
             
@@ -108,41 +108,44 @@ class TrainEval:
             loss.backward()
             self.optimizer.step()
 
-            total_loss += loss # asynchronously
-            tk.set_postfix({"Loss": "%6f" % float(total_loss / (t + 1))})
+            total_loss += loss.item()
+            tk.set_postfix({"Loss": "%6f" % float(total_loss / t)})
             
 
-        return total_loss.item() / len(self.train_dataloader)
+        return total_loss / len(self.train_dataloader)
     
     
     def eval_fn(self, current_epoch):
         self.model.eval()
         total_loss = 0.0
         tk = tqdm(self.val_dataloader, 
-                  desc="EPOCH" + "[VALID]" + str(current_epoch + 1) + "/" + str(self.epoch))
+                  desc="EPOCH" + "[VALID]" + str(current_epoch) + "/" + str(self.epoch))
 
-        for t, data in enumerate(tk):
+        for t, data in enumerate(tk, 1):
             
             subgraph: dgl.DGLGraph = self.get_subgraph_from_data(data)
 
             return_dict = self.get_logits_and_labels_for_output_nodes(subgraph)
             loss = self.criterion(return_dict["logits"], return_dict["labels"])
 
-            total_loss += loss # asynchronously
-            tk.set_postfix({"Loss": "%6f" % float(total_loss / (t + 1))})
+            total_loss += loss.item()
+            tk.set_postfix({"Loss": "%6f" % float(total_loss / t)})
 
 
-        return total_loss.item() / len(self.val_dataloader)
+        return total_loss / len(self.val_dataloader)
     
     def test(self) -> tuple[dict[int, float], dict[int, float]]:
-        
+        self.model.eval()
+
         def list_of_tensors_to_numpy_flat(array, apply_func:None):
             tensor = torch.cat(array, dim=0)
             if apply_func is not None:
                 tensor = apply_func(tensor)
-            
             return tensor.cpu().numpy().reshape(-1)
             
+            
+        self.model.eval()
+
         self.model.eval()
         
         predictions: list[torch.Tensor] = [] # type: ignore
@@ -153,31 +156,34 @@ class TrainEval:
         
         total_loss = 0.0
         
-        for t, data in enumerate(tk):
+        for t, data in enumerate(tk, 1):
             subgraph: dgl.DGLGraph = self.get_subgraph_from_data(data)
             
             return_dict = self.get_logits_and_labels_for_output_nodes(subgraph, apply_train_val_mask=False)
             
             logits = return_dict["logits"]
-            labels = return_dict["labels"]
+            true_labels = return_dict["labels"]
+            mask = return_dict["labels"]
             
             output_nodes = data[1]
             
-            loss = self.criterion(logits, labels)
+            loss = self.criterion(logits, true_labels)
             
-            total_loss += loss.item() # synchronously
+            total_loss += loss.item()
             
-            labels.append(labels)
-            output_nodes_indices.append(output_nodes)
-            predictions.append(logits)
+            labels.append(true_labels.cpu())
+            output_nodes_indices.append(output_nodes.cpu())
+            predictions.append(logits.cpu())
+                        
+            torch.cuda.empty_cache()
             
-            tk.set_postfix({"Loss": "%6f" % float(total_loss / (t + 1))})
+            tk.set_postfix({"Loss": "%6f" % float(total_loss / t)})
             
-        logits: np.ndarray = list_of_tensors_to_numpy_flat(predictions)
+        final_logits: np.ndarray = list_of_tensors_to_numpy_flat(predictions)
         labels: np.ndarray = list_of_tensors_to_numpy_flat(labels)
         output_nodes_indices: np.ndarray = list_of_tensors_to_numpy_flat(output_nodes_indices)
         
-        id2logits: dict[int, float] = dict(zip(output_nodes_indices, logits))
+        id2logits: dict[int, float] = dict(zip(output_nodes_indices, final_logits))
         # id2target: dict[int, float] = dict(zip(output_nodes_indices, labels))
         
         return id2logits
@@ -187,24 +193,25 @@ class TrainEval:
         best_valid_loss = np.inf
         best_train_loss = np.inf
         
-        for i in range(self.epoch):
+        for i in range(1, self.epoch+1):
             train_loss = self.train_fn(i)
             
-            if i + 1 % self.val_every_steps == 0:
+            if i % self.val_every_steps == 0:
                 val_loss = self.eval_fn(i)
 
-            if val_loss < best_valid_loss:
-                torch.save(self.model.state_dict(), "checkpoints/best-weights.pt")
-                print("Saved Best Weights")
-                best_valid_loss = val_loss
-                best_train_loss = train_loss
+                if val_loss < best_valid_loss:
+                    torch.save(self.model.state_dict(), "checkpoints/best-weights.pt")
+                    print("Saved Best Weights")
+                    best_valid_loss = val_loss
+                    best_train_loss = train_loss
 
-                #############
-                # IMPORTANT #
-                #############
+                    #############
+                    # IMPORTANT #
+                    #############
 
-                copy_out_to_snapshot("checkpoints")
-                
+                    copy_out_to_snapshot("checkpoints")
+            
+            torch.cuda.empty_cache()
                 
         print(f"Training Loss : {best_train_loss}")
         print(f"Valid Loss : {best_valid_loss}")
@@ -226,12 +233,12 @@ def get_parser() -> argparse.ArgumentParser:
                         default="GBDT_ready_data",
                         help="The direction of a program workflow")
     
-    parser.add_argument("--data_dtype", type=str, 
+    parser.add_argument("--data_type", type=str, 
                         choices=["dglgraph", "json"],
                         help="Indicator whether or not the data is already preprocessed and stored as a graph", 
                         default="json")
     
-    parser.add_argument("--remove_self_loops", type=bool, default=True,
+    parser.add_argument("--remove_self_loops", action="store_true",
                         help="Whether or note to remove self loops from a graph",
                         )
     
@@ -240,8 +247,8 @@ def get_parser() -> argparse.ArgumentParser:
     return parser
 
 TRAINING_PARAMETERS = {
-        "batch_size": 500,
-        "num_epochs": 50,
+        "batch_size": 30000,
+        "num_epochs": 1,
         "max_num_neighbors": 50, # -1 for all neighbors to be sampled
 
         "learning_rate": 0.0003,
@@ -284,7 +291,7 @@ def main():
     
     datadir: Path = args.datadir if args.debug else Path("./data")
     mode: str = args.mode
-    data_dtype: str = args.data_dtype
+    data_dtype: str = args.data_type
     
     print("Device is ", DEVICE)
     
@@ -299,6 +306,12 @@ def main():
         [graph_train, graph_valid, graph_test] = [remove_self_loop(g) for g in graphs]
     else:
         graph_train, graph_valid, graph_test = graphs
+    
+    graph_train.ndata[MASK_DATA_NAME] = graph_train.ndata[MASK_DATA_NAME].bool()
+    graph_valid.ndata[MASK_DATA_NAME] = graph_valid.ndata[MASK_DATA_NAME].bool()
+    graph_test.ndata[MASK_DATA_NAME] = graph_test.ndata[MASK_DATA_NAME].bool()
+    
+    num_input_features = graph_train.ndata[FEATURES_DATA_NAME].shape[1]
     
     print("Successfully created graphs")
     
@@ -321,7 +334,9 @@ def main():
     else:
         print("The mode is GNN")
         from models.gnn_initial_and_plre import create_graph_model
-        model = create_graph_model(model_name=mode, model_params=MODEL_PARAMS)
+        
+        MODEL_PARAMS.update(dict(num_input_features=num_input_features))
+        model = create_graph_model(model_name=mode, model_params=MODEL_PARAMS).to(DEVICE)
         
         
         
@@ -345,8 +360,8 @@ def main():
         id2logits = trainer.train()
         
         
-    with open("id2logits_py_dict.pkl", "wb"):
-        pickle.dump(id2logits)
+    with open(OUTPUT_FILE_NAME, "wb") as f_write:
+        pickle.dump(id2logits, f_write)
         
                 
 if __name__ == '__main__':
