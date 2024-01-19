@@ -1,5 +1,7 @@
 import sys
 
+import pickle
+
 from typing import Any
 import argparse
 from pathlib import Path
@@ -171,14 +173,14 @@ class TrainEval:
             
             tk.set_postfix({"Loss": "%6f" % float(total_loss / (t + 1))})
             
-        predictions: np.ndarray = list_of_tensors_to_numpy_flat(predictions, apply_func=torch.sigmoid)
+        logits: np.ndarray = list_of_tensors_to_numpy_flat(predictions)
         labels: np.ndarray = list_of_tensors_to_numpy_flat(labels)
         output_nodes_indices: np.ndarray = list_of_tensors_to_numpy_flat(output_nodes_indices)
         
-        id2prediction: dict[int, float] = dict(zip(output_nodes_indices, predictions))
-        id2target: dict[int, float] = dict(zip(output_nodes_indices, labels))
+        id2logits: dict[int, float] = dict(zip(output_nodes_indices, logits))
+        # id2target: dict[int, float] = dict(zip(output_nodes_indices, labels))
         
-        return id2prediction, id2target
+        return id2logits
 
     
     def train(self):
@@ -210,11 +212,11 @@ class TrainEval:
         if self.test_dataloader is not None:
             print("Performing test on test dataloader")
             
-            id2prediction, id2target = self.test()
+            id2logits = self.test()
             
-            return id2prediction, id2target
+            return id2logits
         
-        return {}, {}
+        return {}
         
 
 def get_parser() -> argparse.ArgumentParser:
@@ -237,6 +239,41 @@ def get_parser() -> argparse.ArgumentParser:
     
     return parser
 
+TRAINING_PARAMETERS = {
+        "batch_size": 500,
+        "num_epochs": 50,
+        "max_num_neighbors": 50, # -1 for all neighbors to be sampled
+
+        "learning_rate": 0.0003,
+        "weight_decay": 0.00001,
+
+        "val_every_steps": 5,
+        "early_stopping_steps": 40,
+        "num_workers": 12,
+}
+
+
+MODEL_PARAMS = {
+    
+        "num_hidden_features": 128,
+        "normalisation_name": "batch",
+        "convolution_name": "sage",
+        "convolution_params":
+            {
+                "aggregator_type": 'mean',
+                }, 
+        "activation_name": 'gelu',
+        "apply_skip_connection": True,
+        "num_preprocessing_layers": 1,
+        "num_encoder_layers": 2,
+        "num_predictor_layers": 1,
+        
+        # "n_frequencies": 48,
+        # "frequency_scale": 0.02,
+        # "d_embedding": 16,
+
+}
+
 def main():
     args = get_parser().parse_args()
     
@@ -254,7 +291,7 @@ def main():
     if data_dtype == "json":
         raise NotImplementedError
     else:
-        graphs_filename = datadir / "graphs_train_val_test.bin" # this is predefined name, used for testing
+        graphs_filename = str(datadir / "graphs_train_val_test.bin") # this is predefined name, used for testing
         graphs, _ = load_graphs(graphs_filename) 
     
     
@@ -263,8 +300,10 @@ def main():
     else:
         graph_train, graph_valid, graph_test = graphs
     
+    print("Successfully created graphs")
     
     if mode == "GBDT":
+        print("The mode is GBDT")
         from xgboost import XGBClassifier
         
         from utils import get_features_and_labels_from_a_graph
@@ -276,14 +315,39 @@ def main():
         model = XGBClassifier()
         model.fit(X_train, y_train)
 
-        logits = model.predict_proba(X_test)[:, 1]
+        logits = model.predict_proba(X_test)[:, 1].reshape(-1)
+        id2logits = dict(zip(range(X_test.shape[0]), logits))
+        
+    else:
+        print("The mode is GNN")
+        from models.gnn_initial_and_plre import create_graph_model
+        model = create_graph_model(model_name=mode, model_params=MODEL_PARAMS)
         
         
         
-    elif mode == "GNN":
-        ...
+        loss_func = torch.nn.BCEWithLogitsLoss()
+        optimizer = torch.optim.Adam(model.parameters(), lr=TRAINING_PARAMETERS["learning_rate"], weight_decay=TRAINING_PARAMETERS["weight_decay"])
         
-    
-    
+        sampler = dgl.dataloading.NeighborSampler(fanouts=[TRAINING_PARAMETERS["max_num_neighbors"]] * MODEL_PARAMS["num_encoder_layers"])
+
+        
+        batch_size = TRAINING_PARAMETERS["batch_size"]
+        num_workers = TRAINING_PARAMETERS["num_workers"]
+        
+        train_loader = init_dataloader(graph_train, sampler, DEVICE, batch_size=batch_size, num_workers=num_workers)
+        val_loader = init_dataloader(graph_valid, sampler, DEVICE, shuffle=False, batch_size=batch_size, num_workers=num_workers)
+        test_loader = init_dataloader(graph_test, sampler, DEVICE, shuffle=False, batch_size=batch_size, num_workers=num_workers)
+        
+        trainer = TrainEval(model=model, train_dataloader=train_loader, val_dataloader=val_loader, test_dataloader=test_loader,
+                            optimizer=optimizer, criterion=loss_func, device=DEVICE, batch_size=batch_size, 
+                            num_epochs=TRAINING_PARAMETERS["num_epochs"], val_every_steps=TRAINING_PARAMETERS["val_every_steps"])
+        print("Initialized trainer")
+        id2logits = trainer.train()
+        
+        
+    with open("id2logits_py_dict.pkl", "wb"):
+        pickle.dump(id2logits)
+        
+                
 if __name__ == '__main__':
     main()
