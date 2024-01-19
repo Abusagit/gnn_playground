@@ -289,7 +289,7 @@ def main():
     #############
     copy_snapshot_to_out("checkpoints")
     
-    datadir: Path = args.datadir if args.debug else Path("./")
+    datadir: Path = args.datadir if args.debug else Path("./data")
     mode: str = args.mode
     data_dtype: str = args.data_type
     
