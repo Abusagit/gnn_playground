@@ -114,7 +114,7 @@ class TrainEval:
 
         return total_loss / len(self.train_dataloader)
     
-    
+    @torch.no_grad()
     def eval_fn(self, current_epoch):
         self.model.eval()
         total_loss = 0.0
@@ -134,19 +134,14 @@ class TrainEval:
 
         return total_loss / len(self.val_dataloader)
     
+    @torch.no_grad()
     def test(self) -> tuple[dict[int, float], dict[int, float]]:
         self.model.eval()
 
-        def list_of_tensors_to_numpy_flat(array, apply_func:None):
-            tensor = torch.cat(array, dim=0)
-            if apply_func is not None:
-                tensor = apply_func(tensor)
-            return tensor.cpu().numpy().reshape(-1)
+        def list_of_tensors_to_numpy_flat(array):
+            return torch.cat(array, dim=0).cpu().numpy().reshape(-1)
             
-            
-        self.model.eval()
 
-        self.model.eval()
         
         predictions: list[torch.Tensor] = [] # type: ignore
         labels: list[torch.Tensor] = [] # type: ignore
@@ -157,13 +152,13 @@ class TrainEval:
         total_loss = 0.0
         
         for t, data in enumerate(tk, 1):
+
             subgraph: dgl.DGLGraph = self.get_subgraph_from_data(data)
             
             return_dict = self.get_logits_and_labels_for_output_nodes(subgraph, apply_train_val_mask=False)
             
             logits = return_dict["logits"]
             true_labels = return_dict["labels"]
-            mask = return_dict["labels"]
             
             output_nodes = data[1]
             
@@ -174,8 +169,9 @@ class TrainEval:
             labels.append(true_labels.cpu())
             output_nodes_indices.append(output_nodes.cpu())
             predictions.append(logits.cpu())
+            
+            # breakpoint()
                         
-            torch.cuda.empty_cache()
             
             tk.set_postfix({"Loss": "%6f" % float(total_loss / t)})
             
@@ -228,7 +224,7 @@ class TrainEval:
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Graph Neural Network for fraud prediction")
-    parser.add_argument("--datadir", type=Path, help="File with graphs", required=True)
+    parser.add_argument("--datadir", type=Path, help="Directory with data", default="./data")
     parser.add_argument("--mode", type=str, choices=["GBDT", "GNN"], 
                         default="GBDT_ready_data",
                         help="The direction of a program workflow")
@@ -289,7 +285,7 @@ def main():
     #############
     copy_snapshot_to_out("checkpoints")
     
-    datadir: Path = args.datadir if args.debug else Path("./data")
+    datadir: Path = args.datadir
     mode: str = args.mode
     data_dtype: str = args.data_type
     
