@@ -12,6 +12,19 @@ LABELS_DATA_NAME = "labels"
 
 
 
+# MODE_FIELD = "mode"
+
+def construct_dgl_graph(adjacency_matrix, features, targets):
+    row_coordinates, col_coordinates = adjacency_matrix.nonzero()
+    row_coordinates, col_coordinates = torch.tensor(row_coordinates), torch.tensor(col_coordinates)
+    
+    graph = dgl.graph(data=(row_coordinates, col_coordinates))
+    graph.ndata[FEATURES_DATA_NAME] = torch.tensor(features, dtype=torch.float)
+    graph.ndata[LABELS_DATA_NAME] = torch.tensor(targets, dtype=torch.float).reshape(-1, 1)
+
+    return graph
+
+
 def get_features_and_labels_from_a_graph(graph: dgl.DGLGraph):
     mask = graph.ndata[MASK_DATA_NAME].bool()
     
