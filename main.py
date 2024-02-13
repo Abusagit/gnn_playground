@@ -10,8 +10,7 @@ import numpy as np
 import torch
 from dgl import load_graphs, remove_self_loop
 from torch.hub import tqdm
-
-import json
+import ujson
 import pandas as pd
 
 ##################### Nirvana ##########################################
@@ -24,6 +23,7 @@ from utils import (
     USERID_DATA_NAME,
     construct_subgraph_from_blocks,
     init_dataloader,
+    write_output_to_YT,
 )
 
 ##################### Nirvana ##########################################
@@ -217,7 +217,7 @@ class TrainEval:
                     val_loss = self.eval_fn(i)
 
                     if val_loss < best_valid_loss:
-                        torch.save(self.model.state_dict(), "checkpoints/best-weights.pt")
+                        torch.save(self.model.state_dict(), "checkpoints/state/best-weights.pt")
                         print("Saved Best Weights")
                         best_valid_loss = val_loss
                         best_train_loss = train_loss
@@ -242,7 +242,7 @@ class TrainEval:
 
             return id2logits
 
-        torch.save(self.model.state_dict(), "checkpoints/last-weights.pt")
+        torch.save(self.model.state_dict(), "checkpoints/state/last-weights.pt")
         print("Saved Last Weights")
         copy_out_to_snapshot("checkpoints")
 
@@ -439,10 +439,16 @@ def main():
     index2logits_list_of_dicts = index2logits_df.to_dict('records')
     
     
+    mr_table_output: dict[str, str] = write_output_to_YT(output=index2logits_list_of_dicts)
+    
     with open(OUTPUT_FILE_NAME, "w") as out_handler:
     
-        for line in map(json.dumps, index2logits_list_of_dicts):
+        for line in map(ujson.dumps, index2logits_list_of_dicts):
             print(line, file=out_handler)
+            
+    with open("MR_TABLE", "w") as out_handler:
+        ujson.dump(mr_table_output, out_handler)
+        
     
     
     copy_out_to_snapshot("checkpoints", dump=True)

@@ -8,6 +8,10 @@ import torch
 import ujson
 from sklearn.preprocessing import StandardScaler
 
+import yt.wrapper as yt
+import random
+import string
+
 OUTPUT_MASK_NAME = "output_mask"
 FEATURES_DATA_NAME = "features"
 MASK_DATA_NAME = "mask"
@@ -172,3 +176,29 @@ def prepare_json_input(data_dir: Path):
     )
 
     return [graph_train, graph_valid, graph_test], scaler
+
+
+
+def write_output_to_YT(output: list[dict[str, Any]], table_path_root: str="//home/yr/fvelikon/tmp") -> dict[str, str]:
+    @yt.yt_dataclass
+    class Row:
+        userid: int
+        score: float
+        
+    client = yt.YtClient(proxy="hahn")
+    
+    random_name = ''.join(random.choices(string.ascii_lowercase, k=20))
+    table_path = "{}/table_antifraud_{}".format(table_path_root, random_name)
+    
+    table_rows: list[Row] = [Row(userid=row["userid"], score=row["score"]) for row in output]
+    
+    yt.write_table_structured(table_path, Row, table_rows, client=client)
+    
+    
+    print(f"Table was saved to {table_path}")
+    
+    
+    mr_table = dict(cluster="hahn", table=table_path)
+    
+    
+    return mr_table
