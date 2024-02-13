@@ -1,11 +1,11 @@
 from copy import deepcopy
 from pathlib import Path
-from typing import Any
-
-import numpy as np
+from typing import Any, Optional
 
 import dgl
+import numpy as np
 import torch
+import ujson
 from sklearn.preprocessing import StandardScaler
 
 OUTPUT_MASK_NAME = "output_mask"
@@ -13,12 +13,6 @@ FEATURES_DATA_NAME = "features"
 MASK_DATA_NAME = "mask"
 LABELS_DATA_NAME = "labels"
 USERID_DATA_NAME = "userid"
-
-import ujson
-
-import torch
-
-from typing import Optional
 
 # MODE_FIELD = "mode"
 
@@ -45,7 +39,7 @@ def _construct_dgl_graph(adjacency_matrix, features, targets, mask, user_ids):
     graph.ndata[FEATURES_DATA_NAME] = torch.tensor(features, dtype=torch.float)
     graph.ndata[LABELS_DATA_NAME] = torch.tensor(targets, dtype=torch.float)  # .reshape(-1, 1)
     graph.ndata[MASK_DATA_NAME] = torch.tensor(mask, dtype=torch.bool)  # .reshape(-1, 1)
-    
+
     graph.ndata[USERID_DATA_NAME] = torch.tensor(user_ids, dtype=torch.int64)
 
     return graph
@@ -176,5 +170,5 @@ def prepare_json_input(data_dir: Path):
     graph_train, graph_valid, graph_test = (
         _construct_dgl_graph(*adj_feats_targets_mask) for adj_feats_targets_mask in zip(_zip_container)
     )
-    
+
     return [graph_train, graph_valid, graph_test], scaler

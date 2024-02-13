@@ -13,8 +13,7 @@ export HOME_PATH=$(pwd)
 # install more packages if absent in the porto layer using "Libraries to install" option, or call pip here
 # for large number of packages consider diff layer or whole new layer
 echo "=========== SNAPSHOT_PATH stuff INITIAL =============="
-find $SOURCE_CODE_PATH -maxdepth 2
-ls -la $SOURCE_CODE_PATH
+ls -la $SNAPSHOT_PATH
 
 
 echo "=========== SOURCE_CODE_PATH stuff =============="

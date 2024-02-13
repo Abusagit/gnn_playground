@@ -320,13 +320,13 @@ def main():
 
     # NOTE: this is not the final implementation of training and evaluation!
     if mode == "training":
-        weights_file = "checkpoints/last-weights.pt"
-
-        print(f"The mode is {mode}, picking preemtped weights...")
-    else:
         weights_file = None
 
         print(f"The mode is {mode}, launching initial training...")
+    else:
+        weights_file = "checkpoints/last-weights.pt"
+
+        print(f"The mode is {mode}, picking preemtped weights...")
 
     if data_dtype == "json":
         from utils import prepare_json_input
@@ -367,7 +367,13 @@ def main():
         model = XGBClassifier()
         model.fit(X_train, y_train)
         logits = model.predict_proba(X_test)[:, 1].reshape(-1)
-        index2logits = dict(zip(range(X_test.shape[0]), logits))
+        
+        index2logits_df: pd.DataFrame = pd.DataFrame(
+            data={USERID_DATA_NAME: graph_test.ndata[USERID_DATA_NAME].numpy().reshape(-1), "score": logits},
+            columns=[USERID_DATA_NAME, "score"]
+        )
+        
+        
 
         joblib.dump(model, "checkpoints/xgboost_model.bin")
 
