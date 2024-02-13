@@ -2,7 +2,7 @@ import argparse
 import pickle
 import sys
 from pathlib import Path
-from typing import Mapping, Optional
+from typing import Mapping, Optional, Callable
 
 import dgl
 import joblib
@@ -79,22 +79,28 @@ class TrainEval:
         all_output_mask = subgraph.ndata[MASK_DATA_NAME]
 
         all_logits = self.model(subgraph, input_features)
-        output_nodes_logits = all_logits[output_nodes_mask]
+        
         output_nodes_train_mask = all_output_mask[output_nodes_mask]
+        
+        output_nodes_logits = all_logits[output_nodes_mask]
         output_nodes_labels = subgraph.ndata[LABELS_DATA_NAME][output_nodes_mask]
+        output_nodes_ids = subgraph.ndata[USERID_DATA_NAME][output_nodes_mask]
 
         if apply_train_val_mask:
             logits = output_nodes_logits[output_nodes_train_mask]
             labels = output_nodes_labels[output_nodes_train_mask]
+            ids = output_nodes_ids[output_nodes_train_mask]
 
         else:
             logits = output_nodes_logits
             labels = output_nodes_labels
+            ids = output_nodes_ids
 
         return dict(
             output_nodes_train_val_mask=output_nodes_train_mask,
             logits=logits,
             labels=labels,
+            ids=ids,
         )
 
     def get_subgraph_from_data(self, data) -> dgl.DGLGraph:
@@ -151,8 +157,12 @@ class TrainEval:
     def test(self) -> tuple[dict[int, float], dict[int, float]]:
         self.model.eval()
 
-        def list_of_tensors_to_numpy_flat(array):
-            return torch.cat(array, dim=0).cpu().numpy().reshape(-1)
+        def list_of_tensors_to_numpy_flat(array, apply_func: Optional[Callable[[torch.Tensor], torch.Tensor]]=None):
+            plain_array = torch.cat(array, dim=0).cpu().reshape(-1)
+            
+            if apply_func is not None:
+                plain_array = apply_func(plain_array)
+            return plain_array.numpy()
 
         predictions: list[torch.Tensor] = []  # type: ignore
         labels: list[torch.Tensor] = []  # type: ignore
@@ -169,8 +179,8 @@ class TrainEval:
 
             logits = return_dict["logits"]
             true_labels = return_dict["labels"]
+            output_batch_ids = return_dict["ids"]
 
-            output_nodes = data[1]
 
             loss = self.criterion(logits, true_labels)
 
@@ -178,22 +188,19 @@ class TrainEval:
 
             labels.append(true_labels.cpu())
             
-            output_batch_ids = subgraph.ndata[USERID_DATA_NAME][output_nodes].cpu()
-            
-            output_nodes_ids.append(output_batch_ids)
-            
-            
+            output_nodes_ids.append(output_batch_ids.cpu())
+
             
             predictions.append(logits.cpu())
 
             tk.set_postfix({"Loss": "%6f" % float(total_loss / t)})
 
-        final_logits: np.ndarray = list_of_tensors_to_numpy_flat(predictions)
+        predictions: np.ndarray = list_of_tensors_to_numpy_flat(predictions, apply_func=torch.sigmoid)
         labels: np.ndarray = list_of_tensors_to_numpy_flat(labels)
         output_nodes_ids: np.ndarray = list_of_tensors_to_numpy_flat(output_nodes_ids)
 
         id2logits_df = pd.DataFrame(
-            data={USERID_DATA_NAME: output_batch_ids, "score": final_logits}, columns=[USERID_DATA_NAME, "score"]
+            data={USERID_DATA_NAME: output_nodes_ids, "score": predictions}, columns=[USERID_DATA_NAME, "score"]
         )
 
         return id2logits_df
@@ -343,7 +350,6 @@ def main():
         graphs[2].ndata[MASK_DATA_NAME] = graphs[2].ndata[MASK_DATA_NAME].bool()
         
         
-        
 
     if args.remove_self_loops:
         [graph_train, graph_valid, graph_test] = [remove_self_loop(g) for g in graphs]
@@ -351,6 +357,10 @@ def main():
         graph_train, graph_valid, graph_test = graphs
 
     num_input_features = graph_train.ndata[FEATURES_DATA_NAME].shape[1]
+    
+    if USERID_DATA_NAME not in graphs[0].ndata:
+        for i in range(3):
+            graphs[i].ndata[USERID_DATA_NAME] = torch.arange(len(graphs[i].ndata[FEATURES_DATA_NAME]))
 
     print("Successfully created graphs")
 
