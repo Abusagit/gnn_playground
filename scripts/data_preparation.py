@@ -1,4 +1,3 @@
-import json
 from typing import Any, Optional, Sequence
 
 import numpy as np
@@ -7,7 +6,8 @@ import numpy as np
 # print(pl.__version__)
 import pandas as pd
 import yt.wrapper as yt
-from sklearn.preprocessing import StandardScaler
+from scipy.sparse import coo_matrix
+
 
 OptionalColumns = Optional[Sequence[str]]
 
@@ -26,6 +26,10 @@ ID_COLUMN_NAMES = ["userid", "orgid", "date"]
 
 TARGETS_COLUMNS = ID_COLUMN_NAMES + [TARGET_COL_NAME]
 TRUST_COLUMNS = ID_COLUMN_NAMES + TRUST_INDICATORS_NAMES
+
+
+TRAIN_RATIO = 0.8
+VALID_RATIO = 1.0 - TRAIN_RATIO
 
 
 def read_table(mr_table) -> pd.DataFrame:
@@ -208,6 +212,33 @@ def filter_data_by_target(df, target_thresholds):
     return df_filtered
 
 
+def construct_adjacency_matrix(
+    df_edges, user_mapping, organisation_mapping, user_column_name="userid", organisation_column_name="orgid"
+):
+    num_user_ids = len(user_mapping)
+    num_organisation_ids = len(organisation_mapping)
+
+    user_encoder = np.vectorize(lambda id: user_mapping[id])
+    organisation_encoder = np.vectorize(lambda id: organisation_mapping[id])
+
+    df_edges_encoded = df_edges.copy()
+    df_edges_encoded[user_column_name] = df_edges_encoded[user_column_name].apply(user_encoder)
+    df_edges_encoded[organisation_column_name] = df_edges_encoded[organisation_column_name].apply(organisation_encoder)
+
+    incidence_data = np.ones(shape=(len(df_edges_encoded),), dtype=np.int64)
+
+    incidence_row_coordinates = df_edges_encoded[user_column_name].values
+    incidence_col_coordinates = df_edges_encoded[organisation_column_name].values
+
+    incidence_matrix_train = coo_matrix(
+        (incidence_data, (incidence_row_coordinates, incidence_col_coordinates)),
+        shape=(num_user_ids, num_organisation_ids),
+    ).tocsr()
+    adjacency_matrix_train = incidence_matrix_train @ incidence_matrix_train.T
+
+    return adjacency_matrix_train
+
+
 def separate_features_for_graph_and_tests(
     df_before_projection: pd.DataFrame,
     df_projected: pd.DataFrame,
@@ -248,20 +279,43 @@ def separate_features_for_graph_and_tests(
 
     df_edges = df_before_projection[ID_COLUMN_NAMES]
     df_edges = df_edges[df_edges["userid"].isin(set(indices))]  # is user had connection with this triplet
-
     user_mapping = {id: id_encoding for id_encoding, id in enumerate(indices)}
-
     organisation_mapping = {id: id_encoding for id_encoding, id in enumerate(df_edges["orgid"].unique())}
+
+    adjacency_matrix = construct_adjacency_matrix(
+        df_edges=df_edges, user_mapping=user_mapping, organisation_mapping=organisation_mapping
+    )
 
     return dict(
         features=features,
         targets=targets,
         interactions_counts=interactions_counts,
         indices=indices,
-        df_edges=df_edges,
-        user_mapping=user_mapping,
-        organisation_mapping=organisation_mapping,
+        adjacency_matrix=adjacency_matrix,
+        user_ids=df_before_projection["userid"].values,
+        # df_edges=df_edges,
+        # user_mapping=user_mapping,
+        # organisation_mapping=organisation_mapping,
     ).update(update_dict)
+
+
+def prepare_split_indices(num_train_samples, train_ratio):
+    indices = np.arange(num_train_samples)
+    indices_permuted = np.random.permutation(indices)
+
+    train_size = int(train_ratio * num_train_samples)
+
+    train_indices = indices_permuted[:train_size]
+    val_indices = indices_permuted[train_size:]
+
+    return train_indices, val_indices
+
+
+def convert_split_indices_to_mask(num_samples, split_indices):
+    split_mask = np.zeros(shape=(num_samples,), dtype=bool)
+    split_mask[split_indices] = True
+
+    return split_mask
 
 
 def main(
@@ -308,8 +362,6 @@ def main(
             + ID_COLUMN_NAMES
             + [HASH_COL]
         )
-        
-        
 
         (
             df_train_projected,
@@ -324,7 +376,7 @@ def main(
         )
 
         df_test_projected, _, _, _ = filter_and_process_columns_and_project_on_users(
-            df=df_interactions_train,
+            df=df_interactions_test,
             initial_test_indices=initial_test_indices,
             target_names=pure_target_names,
             feature_names=pure_feature_names,
@@ -341,15 +393,39 @@ def main(
         ] + TRUST_INDICATORS_NAMES
 
         train_data: dict[str, Any] = separate_features_for_graph_and_tests(
-            df_projected=df_train_projected, column_names_to_remove=column_names_to_remove_train
+            df_projected=df_train_projected,
+            column_names_to_remove=column_names_to_remove_train,
+            df_before_projection=df_interactions_train,
         )
 
         test_data: dict[str, Any] = separate_features_for_graph_and_tests(
-            df_projected=df_test_projected, column_names_to_remove=column_names_to_remove_test, test=False
+            df_projected=df_test_projected,
+            column_names_to_remove=column_names_to_remove_test,
+            test=False,
+            df_before_projection=df_interactions_test,
+        )
+
+        num_samples_train = len(train_data["features"])
+        indices_for_train, indices_for_validation = prepare_split_indices(num_samples_train, TRAIN_RATIO)
+
+        train_mask = convert_split_indices_to_mask(num_samples=num_samples_train, split_indices=indices_for_train)
+        val_mask = convert_split_indices_to_mask(num_samples=num_samples_train, split_indices=indices_for_validation)
+
+        # for test, we take only those who has trust indicators
+        num_samples_test = len(test_data["features"])
+        indices_test = np.where(np.all(~np.isnan(test_data["trust_indicators"]), axis=1))[0]
+
+        test_mask = convert_split_indices_to_mask(num_samples=num_samples_test, split_indices=indices_test)
+
+        masks = dict(
+            train_mask=train_mask,
+            val_mask=val_mask,
+            test_mask=test_mask,
         )
 
         PARAMS_OUTPUT["train_data"] = train_data
         PARAMS_OUTPUT["test_data"] = test_data
+        PARAMS_OUTPUT["masks"] = masks
 
     else:  # INFERENCE PHASE
         PARAMS_OUTPUT["mode"] = "test"
