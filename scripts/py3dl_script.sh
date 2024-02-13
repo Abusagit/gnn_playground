@@ -52,11 +52,15 @@ python3 main.py --model_type GNN --data_type dglgraph
 echo "=========== cooking OUTPUT =============="
 
 mv ./index2logit $DATA_PATH/index2logit
-
 mv ./checkpoints $SNAPSHOT_PATH
 
+cp ./MR_TABLE $DATA_PATH/MR_TABLE
+mv ./MR_TABLE $JSON_OUTPUT_FILE
 
-echo "{"cats":["Grumpy Cat","Nyan Cat","Smudge the Cat"]}" > $JSON_OUTPUT_FILE
+
+# echo "{"cats":["Grumpy Cat","Nyan Cat","Smudge the Cat"]}" > $JSON_OUTPUT_FILE
+
+
 
 echo "job complete" > $OUT_LOGS_PATH/out.log
 
