@@ -186,7 +186,7 @@ def write_output_to_YT(output: list[dict[str, Any]], table_path_root: str="//hom
         score: float
         
     import os
-    client = yt.YtClient(proxy="hahn", token=os.environ.get["YT_TOKEN"])
+    client = yt.YtClient(proxy="hahn", token=os.environ.get("YT_TOKEN"))
     
     random_name = ''.join(random.choices(string.ascii_lowercase, k=20))
     table_path = "{}/table_antifraud_{}".format(table_path_root, random_name)
