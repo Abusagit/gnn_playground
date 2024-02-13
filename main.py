@@ -28,7 +28,7 @@ from utils import (
 
 ##################### Nirvana ##########################################
 
-OUTPUT_FILE_NAME = "id2logits_py_dict.pkl"
+OUTPUT_FILE_NAME = "index2logit"
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -311,7 +311,6 @@ def main():
     # IMPORTANT #
     #############
     copy_snapshot_to_out("checkpoints")
-
     datadir: Path = args.datadir
     model_type: str = args.model_type
     data_dtype: str = args.data_type
@@ -424,8 +423,10 @@ def main():
     index2logits_list_of_dicts = index2logits_df.to_dict('records')
     
     
-    with open("index2logit", "w") as out_handler:
-        out_handler.writelines(map(json.dumps, index2logits_list_of_dicts))
+    with open(OUTPUT_FILE_NAME, "w") as out_handler:
+    
+        for line in map(json.dumps, index2logits_list_of_dicts):
+            print(line, file=out_handler)
     
     
     copy_out_to_snapshot("checkpoints", dump=True)
