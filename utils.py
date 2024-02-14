@@ -12,6 +12,8 @@ import yt.wrapper as yt
 import random
 import string
 
+from typing import List
+
 OUTPUT_MASK_NAME = "output_mask"
 FEATURES_DATA_NAME = "features"
 MASK_DATA_NAME = "mask"
@@ -21,7 +23,9 @@ USERID_DATA_NAME = "userid"
 # MODE_FIELD = "mode"
 
 
-def _scale_features(train_val_test_features_container: list[np.ndarray], scaler_state_file: Path = None):
+def _scale_features(train_val_test_features_container: List[List[float]], scaler_state_file: Path = None):
+    
+    train_val_test_features_container = list(map(np.array, train_val_test_features_container))
     if scaler_state_file.exists():
         import joblib
 
@@ -35,16 +39,18 @@ def _scale_features(train_val_test_features_container: list[np.ndarray], scaler_
     return transformed_container, scaler
 
 
-def _construct_dgl_graph(adjacency_matrix, features, targets, mask, user_ids):
-    row_coordinates, col_coordinates = adjacency_matrix.nonzero()
-    row_coordinates, col_coordinates = torch.tensor(row_coordinates), torch.tensor(col_coordinates)
+def _construct_dgl_graph(adjacency_matrix_rows_cols, features, targets, mask, user_ids):
+    row_coordinates, col_coordinates = adjacency_matrix_rows_cols["row_coords"], adjacency_matrix_rows_cols["col_coords"]
+    
+    row_coordinates = torch.tensor(row_coordinates).long()
+    col_coordinates = torch.tensor(col_coordinates).long()
+    graph = dgl.graph(data=(row_coordinates, col_coordinates), idtype=torch.int32)
+    graph.ndata[FEATURES_DATA_NAME] = torch.tensor(features, dtype=torch.float32)
+    graph.ndata[LABELS_DATA_NAME] = torch.tensor(targets, dtype=torch.float32).reshape(-1, 1)
+    graph.ndata[MASK_DATA_NAME] = torch.tensor(mask, dtype=torch.bool).reshape(-1, 1)
 
-    graph = dgl.graph(data=(row_coordinates, col_coordinates))
-    graph.ndata[FEATURES_DATA_NAME] = torch.tensor(features, dtype=torch.float)
-    graph.ndata[LABELS_DATA_NAME] = torch.tensor(targets, dtype=torch.float)  # .reshape(-1, 1)
-    graph.ndata[MASK_DATA_NAME] = torch.tensor(mask, dtype=torch.bool)  # .reshape(-1, 1)
-
-    graph.ndata[USERID_DATA_NAME] = torch.tensor(user_ids, dtype=torch.int64)
+    graph.ndata[USERID_DATA_NAME] = torch.tensor(user_ids, dtype=torch.long).reshape(-1, 1)
+    
 
     return graph
 
@@ -133,7 +139,7 @@ def construct_subgraph_from_blocks(
 
 def prepare_json_input(data_dir: Path):
     scaler_state_filename: Path = data_dir / "scaler.bin"
-    json_input_filename: Path = data_dir / "input_json.json"
+    json_input_filename: Path = data_dir / "JSON_INPUT"
 
     with open(json_input_filename) as handler:
         input_dict = ujson.load(handler)
@@ -146,33 +152,42 @@ def prepare_json_input(data_dir: Path):
         "train_data", "test_data"
     )  # TODO make more flexible
 
-    train_mask = masks_dict.get("train_mask", "test_mask")
-    val_mask = masks_dict.get("val_mask", "test_mask")
-    test_mask = masks_dict["test_mask"]
+    train_mask = np.array(masks_dict.get("train_mask", "test_mask"))
+    val_mask = np.array(masks_dict.get("val_mask", "test_mask"))
+    test_mask = np.array(masks_dict["test_mask"])
 
-    train_features = train_data_dict[FEATURES_DATA_NAME][train_mask]
-    val_features = train_data_dict[FEATURES_DATA_NAME][val_mask]
-    test_features = test_data_dict[FEATURES_DATA_NAME][test_mask]
+    train_features = np.array(train_data_dict[FEATURES_DATA_NAME])
+    val_features = np.array(train_data_dict[FEATURES_DATA_NAME])
+    test_features = np.array(test_data_dict[FEATURES_DATA_NAME])
 
     [train_features, val_features, test_features], scaler = _scale_features(
         train_val_test_features_container=[train_features, val_features, test_features],
         scaler_state_file=scaler_state_filename,
     )
-
+    
+    
+    
+    
     train_targets = val_targets = train_data_dict["targets"]
     test_targets = test_data_dict["targets"]
 
-    train_adjacency = val_adjacency = train_data_dict["adjacency_matrix"]
-    test_adjacency = test_data_dict["adjacency_matrix"]
+    train_adjacency = val_adjacency = train_data_dict["adjacency_matrix_tools"]
+    test_adjacency = test_data_dict["adjacency_matrix_tools"]
+    
+    train_user_ids = val_user_ids = train_data_dict["user_ids"]
+    test_user_ids = test_data_dict["user_ids"]
+    
 
     _zip_container = [
-        [train_adjacency, train_features, train_targets, train_mask],
-        [val_adjacency, val_features, val_targets, test_mask],
-        [test_adjacency, test_features, test_targets, test_mask],
+        [train_adjacency, train_features, train_targets, train_mask, train_user_ids],
+        [val_adjacency, val_features, val_targets, val_mask, val_user_ids],
+        [test_adjacency, test_features, test_targets, test_mask, test_user_ids],
     ]
+    
+    
 
     graph_train, graph_valid, graph_test = (
-        _construct_dgl_graph(*adj_feats_targets_mask) for adj_feats_targets_mask in zip(_zip_container)
+        _construct_dgl_graph(*adj_feats_targets_mask) for adj_feats_targets_mask in _zip_container
     )
 
     return [graph_train, graph_valid, graph_test], scaler

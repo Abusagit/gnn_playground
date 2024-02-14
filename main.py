@@ -121,6 +121,7 @@ class TrainEval:
         tk = tqdm(self.train_dataloader, desc="EPOCH" + "[TRAIN]" + str(current_epoch) + "/" + str(self.epoch))
 
         for t, data in enumerate(tk, 1):
+
             subgraph: dgl.DGLGraph = self.get_subgraph_from_data(data)
 
             self.optimizer.zero_grad()
@@ -256,7 +257,7 @@ def get_parser() -> argparse.ArgumentParser:
         "--model_type",
         type=str,
         choices=["GBDT", "GNN"],
-        default="GBDT_ready_data",
+        default="GNN",
         help="The direction of a program workflow",
     )
 
@@ -442,7 +443,6 @@ def main():
     mr_table_output: dict[str, str] = write_output_to_YT(output=index2logits_list_of_dicts)
     
     with open(OUTPUT_FILE_NAME, "w") as out_handler:
-    
         for line in map(ujson.dumps, index2logits_list_of_dicts):
             print(line, file=out_handler)
             
