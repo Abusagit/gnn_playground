@@ -14,6 +14,14 @@ import string
 
 from typing import List
 
+import os
+
+import sys
+
+sys.path.append("./")
+
+from data_preparation import main_prepare_mr_tables
+
 OUTPUT_MASK_NAME = "output_mask"
 FEATURES_DATA_NAME = "features"
 MASK_DATA_NAME = "mask"
@@ -22,10 +30,11 @@ USERID_DATA_NAME = "userid"
 
 # MODE_FIELD = "mode"
 
+YT_TOKEN = os.environ.get("YT_TOKEN")
+
 
 def _scale_features(train_val_test_features_container: List[List[float]], scaler_state_file: Path = None):
     
-    train_val_test_features_container = list(map(np.array, train_val_test_features_container))
     if scaler_state_file.exists():
         import joblib
 
@@ -39,7 +48,7 @@ def _scale_features(train_val_test_features_container: List[List[float]], scaler
     return transformed_container, scaler
 
 
-def _construct_dgl_graph(adjacency_matrix_rows_cols, features, targets, mask, user_ids):
+def _construct_dgl_graph(adjacency_matrix_rows_cols, features: np.ndarray, targets: np.ndarray, mask: np.ndarray, user_ids: np.ndarray):
     row_coordinates, col_coordinates = adjacency_matrix_rows_cols["row_coords"], adjacency_matrix_rows_cols["col_coords"]
     
     row_coordinates = torch.tensor(row_coordinates).long()
@@ -139,11 +148,13 @@ def construct_subgraph_from_blocks(
 
 def prepare_json_input(data_dir: Path):
     scaler_state_filename: Path = data_dir / "scaler.bin"
-    json_input_filename: Path = data_dir / "JSON_INPUT"
+    json_input_filename: Path = data_dir / "JSON_INPUT.json"
 
     with open(json_input_filename) as handler:
-        input_dict = ujson.load(handler)
-        test_mode = input_dict["mode"]
+        mr_tables = ujson.load(handler)["mr_tables"]
+        
+    
+    input_dict = main_prepare_mr_tables(mr_tables=mr_tables, token=YT_TOKEN)
 
     masks_dict: dict[str, np.ndarray] = input_dict["masks"]
 
@@ -152,13 +163,13 @@ def prepare_json_input(data_dir: Path):
         "train_data", "test_data"
     )  # TODO make more flexible
 
-    train_mask = np.array(masks_dict.get("train_mask", "test_mask"))
-    val_mask = np.array(masks_dict.get("val_mask", "test_mask"))
-    test_mask = np.array(masks_dict["test_mask"])
+    train_mask = masks_dict.get("train_mask", "test_mask")
+    val_mask = masks_dict.get("val_mask", "test_mask")
+    test_mask = masks_dict["test_mask"]
 
-    train_features = np.array(train_data_dict[FEATURES_DATA_NAME])
-    val_features = np.array(train_data_dict[FEATURES_DATA_NAME])
-    test_features = np.array(test_data_dict[FEATURES_DATA_NAME])
+    train_features = train_data_dict[FEATURES_DATA_NAME]
+    val_features = train_data_dict[FEATURES_DATA_NAME]
+    test_features = test_data_dict[FEATURES_DATA_NAME]
 
     [train_features, val_features, test_features], scaler = _scale_features(
         train_val_test_features_container=[train_features, val_features, test_features],
@@ -200,8 +211,7 @@ def write_output_to_YT(output: list[dict[str, Any]], table_path_root: str="//hom
         userid: int
         score: float
         
-    import os
-    client = yt.YtClient(proxy="hahn", token=os.environ.get("YT_TOKEN"))
+    client = yt.YtClient(proxy="hahn", token=YT_TOKEN)
     
     random_name = ''.join(random.choices(string.ascii_lowercase, k=20))
     table_path = "{}/table_antifraud_{}".format(table_path_root, random_name)

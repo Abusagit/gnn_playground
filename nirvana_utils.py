@@ -29,7 +29,7 @@ def copy_out_to_snapshot(out, dump=True):
         print(f"Copy {out} to the snapshot path: {snapshot_path}")
 
         # Delete previous state to avoid memory explosion
-        os.system(f"rm {snapshot_path}/state")
+        os.system(f"rm -rf {snapshot_path}/state")
         copy_tree(out, snapshot_path)
 
         if dump:

@@ -121,7 +121,6 @@ class TrainEval:
         tk = tqdm(self.train_dataloader, desc="EPOCH" + "[TRAIN]" + str(current_epoch) + "/" + str(self.epoch))
 
         for t, data in enumerate(tk, 1):
-
             subgraph: dgl.DGLGraph = self.get_subgraph_from_data(data)
 
             self.optimizer.zero_grad()
@@ -218,7 +217,7 @@ class TrainEval:
                     val_loss = self.eval_fn(i)
 
                     if val_loss < best_valid_loss:
-                        torch.save(self.model.state_dict(), "checkpoints/state/best-weights.pt")
+                        torch.save(self.model.state_dict(), "checkpoints/best-weights.pt")
                         print("Saved Best Weights")
                         best_valid_loss = val_loss
                         best_train_loss = train_loss
@@ -243,7 +242,7 @@ class TrainEval:
 
             return id2logits
 
-        torch.save(self.model.state_dict(), "checkpoints/state/last-weights.pt")
+        torch.save(self.model.state_dict(), "checkpoints/last-weights.pt")
         print("Saved Last Weights")
         copy_out_to_snapshot("checkpoints")
 
@@ -252,6 +251,7 @@ class TrainEval:
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Graph Neural Network for fraud prediction")
+    
     parser.add_argument("--datadir", type=Path, help="Directory with data", default="./data")
     parser.add_argument(
         "--model_type",
@@ -275,6 +275,13 @@ def get_parser() -> argparse.ArgumentParser:
         "--remove_self_loops",
         action="store_true",
         help="Whether or note to remove self loops from a graph",
+    )
+    
+    parser.add_argument(
+        "--n_epochs",
+        type=int,
+        help="Number of training epochs",
+        default=1,
     )
 
     parser.add_argument("--debug", action="store_true", help="Debug mode")
@@ -389,6 +396,9 @@ def main():
         joblib.dump(model, "checkpoints/xgboost_model.bin")
 
     else:
+        
+        TRAINING_PARAMETERS["num_epochs"] = args.n_epochs
+        
         print("The mode is GNN")
         from models.gnn_initial_and_plre import create_graph_model
 

@@ -1,11 +1,10 @@
-from typing import Any, Optional, Sequence, MutableSet
+from typing import Any, Optional, Sequence, MutableSet, List, Dict, Tuple
 
 import numpy as np
 
 import pandas as pd
 import yt.wrapper as yt
 from scipy.sparse import coo_matrix
-from typing import Tuple
 
 OptionalColumns = Optional[Sequence[str]]
 
@@ -35,8 +34,8 @@ PRESERVE_COLUMNS = TRUST_INDICATORS_NAMES + [HASH_COL] + TARGETS_COLUMNS
 
 FEATURE_TO_DTYPE = {
     "date": object,
-    "orgid": np.uint64,
-    "userid": np.uint64,
+    "orgid": np.int64,
+    "userid": np.int64,
     "has_reaction": bool,
     "has_review": bool,
     "rating": np.int32,
@@ -608,7 +607,7 @@ def get_everything_for_adjacency_matrix(
 
     row_coords, col_coords = adjacency_matrix_train.nonzero()
 
-    return dict(row_coords=row_coords.tolist(), col_coords=col_coords.tolist())
+    return dict(row_coords=row_coords, col_coords=col_coords)
 
 
 def separate_features_for_graph_and_tests(
@@ -637,9 +636,9 @@ def separate_features_for_graph_and_tests(
     indices: np.ndarray = df_filtered.index.values
 
     if test:
-        trust_counts: np.ndarray = separate_counts(df_filtered, TRUST_COUNT_NAME).tolist()
-        fraud_counts: np.ndarray = separate_counts(df_filtered, FRAUD_COUNT_NAME).tolist()
-        trust_indicators: np.ndarray = df_filtered[TRUST_INDICATORS_NAMES].values.astype(float).tolist()
+        trust_counts: np.ndarray = separate_counts(df_filtered, TRUST_COUNT_NAME)
+        fraud_counts: np.ndarray = separate_counts(df_filtered, FRAUD_COUNT_NAME)
+        trust_indicators: np.ndarray = df_filtered[TRUST_INDICATORS_NAMES].values.astype(float)
 
         update_dict = dict(
             trust_counts=trust_counts,
@@ -658,18 +657,16 @@ def separate_features_for_graph_and_tests(
         df_edges=df_edges, user_mapping=user_mapping, organisation_mapping=organisation_mapping
     )
 
+    user_ids = df_filtered.index.values
 
-    user_ids = df_filtered.index.values.tolist()
-    
     assert len(features) == len(targets)
     assert len(user_ids) == len(features)
-    
-    
+
     data_dict = dict(
-        features=features.tolist(),
-        targets=targets.tolist(),
-        interactions_counts=interactions_counts.tolist(),
-        indices=indices.tolist(),
+        features=features,
+        targets=targets,
+        interactions_counts=interactions_counts,
+        indices=indices,
         adjacency_matrix_tools=adjacency_matrix_rows_and_cols,
         user_ids=user_ids,
         feature_names=feature_names,
@@ -701,24 +698,14 @@ def convert_split_indices_to_mask(num_samples, split_indices):
     return split_mask
 
 
-def main(
-    in1,
-    in2,
-    in3,
-    mr_tables,
-    token1=None,
-    token2=None,
-    param1=None,
-    param2=None,
-    html_file=None,
+def main_prepare_mr_tables(
+    mr_tables: List[Dict[str, str]],
+    token=None,
 ):
-    print("in1:", in1)
-    print("in2:", in2)
-    print("in3:", in3)
     print("mr_tables:", mr_tables)
 
     # read all data from first mr table
-    yt.config.config["token"] = token1
+    yt.config.config["token"] = token
     yt.config.config["proxy"]["url"] = mr_tables[0]["cluster"]
 
     PARAMS_OUTPUT = {}
@@ -796,7 +783,7 @@ def main(
         _additional_cols_in_test = set(df_test_projected.columns) - set(df_train_projected.columns)
         print(
             f"{df_train_projected.shape=}, {df_test_projected.shape=}\ndf_train_projected has {len(_additional_cols_in_test)} columns: {_additional_cols_in_test}",
-            end="\n\n"
+            end="\n\n",
         )
 
         column_names_to_remove_train = [INTERACTION_COUNT_NAME, TARGET_COL_NAME]
@@ -838,9 +825,9 @@ def main(
         test_mask = convert_split_indices_to_mask(num_samples=num_samples_test, split_indices=indices_test)
 
         masks = dict(
-            train_mask=train_mask.tolist(),
-            val_mask=val_mask.tolist(),
-            test_mask=test_mask.tolist(),
+            train_mask=train_mask,
+            val_mask=val_mask,
+            test_mask=test_mask,
         )
 
         print("Created train, val, test masks")
@@ -848,7 +835,6 @@ def main(
         PARAMS_OUTPUT["train_data"] = train_data
         PARAMS_OUTPUT["test_data"] = test_data
         PARAMS_OUTPUT["masks"] = masks
-
 
     else:  # INFERENCE PHASE
         PARAMS_OUTPUT["mode"] = "test"
@@ -865,14 +851,10 @@ def main(
 
 
 if __name__ == "__main__":
+    import ujson
     import os
 
-    import ujson
-
-    output = main(
-        in1=None,
-        in2=None,
-        in3=None,
+    output = main_prepare_mr_tables(
         mr_tables=[
             {
                 "cluster": "hahn",
@@ -883,11 +865,7 @@ if __name__ == "__main__":
                 "table": "//home/yr/fvelikon/nirvana/5c3d379a-9604-4b97-a1d0-719238f7076f/output1__aoSo9RpQSQqumA-qBAjW5w",
             },
         ],
-        token1=os.environ.get("YT_TOKEN"),
-        token2=None,
-        param1=None,
-        param2=None,
-        html_file=None,
+        token=os.environ.get("YT_TOKEN"),
     )
 
     ujson.dump(output, open("JSON_INPUT", "w"))
