@@ -444,10 +444,19 @@ def main():
         print("Initialized trainer")
         index2logits_df: pd.DataFrame = trainer.train_and_test()
 
+    
+    # properly format the output
+    
+    index2logits_df[USERID_DATA_NAME] = index2logits_df[USERID_DATA_NAME].apply(lambda x: f"/user/{x}")
+    print(index2logits_df)
+    
         
-        print(index2logits_df.head())
+    index2logits_df.to_csv("index2logits_df.csv")
+    
+    
         
     index2logits_list_of_dicts = index2logits_df.to_dict('records')
+    
     
     
     mr_table_output: dict[str, str] = write_output_to_YT(output=index2logits_list_of_dicts)
