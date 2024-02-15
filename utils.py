@@ -100,8 +100,8 @@ def init_dataloader(
         num_workers=num_workers,
         batch_size=batch_size,
         drop_last=False,
-        use_prefetch_thread=False,
-        pin_prefetcher=False,
+        use_prefetch_thread=True,
+        pin_prefetcher=True,
     )
 
     return dataloader
