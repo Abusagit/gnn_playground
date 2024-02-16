@@ -208,7 +208,7 @@ def prepare_json_input(data_dir: Path):
 def write_output_to_YT(output: list[dict[str, Any]], table_path_root: str="//home/yr/fvelikon/tmp") -> dict[str, str]:
     @yt.yt_dataclass
     class Row:
-        userid: int
+        userid: str
         score: float
         
     client = yt.YtClient(proxy="hahn", token=YT_TOKEN)
