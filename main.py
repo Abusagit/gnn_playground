@@ -325,7 +325,7 @@ def main():
     #############
     # IMPORTANT #
     #############
-    copy_snapshot_to_out("checkpoints")
+    copy_snapshot_to_out("./")
     datadir: Path = args.datadir
     model_type: str = args.model_type
     data_dtype: str = args.data_type
