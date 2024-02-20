@@ -206,7 +206,7 @@ def prepare_json_input(data_dir: Path, columns_metadata_file: Optional[str]=None
         _construct_dgl_graph(*adj_feats_targets_mask) for adj_feats_targets_mask in _zip_container
     )
 
-    return [graph_train, graph_valid, graph_test], scaler
+    return [graph_train, graph_valid, graph_test], scaler, columns_metadata
 
 
 
