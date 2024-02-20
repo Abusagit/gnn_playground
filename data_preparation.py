@@ -837,7 +837,7 @@ def main_prepare_mr_tables(
         print("Separated features for graph building")
         
         
-        features_in_train_df = list(set(df_train_projected.columns.values) - {ID_COLUMN_NAMES} - {TARGET_COL_NAME} - {TRUST_COLUMNS}) + ID_COLUMN_NAMES
+        features_in_train_df = list(set(df_train_projected.columns.values) - set(ID_COLUMN_NAMES) - set(TARGET_COL_NAME) - set(TRUST_COLUMNS)) + ID_COLUMN_NAMES
         
         _columns_metadata = dict(
             features_in_train_df=features_in_train_df,
