@@ -325,7 +325,7 @@ def main():
     #############
     # IMPORTANT #
     #############
-    copy_snapshot_to_out("./")
+    copy_snapshot_to_out("checkpoints")
     datadir: Path = args.datadir
     model_type: str = args.model_type
     data_dtype: str = args.data_type
@@ -336,18 +336,23 @@ def main():
     # NOTE: this is not the final implementation of training and evaluation!
     if mode == "training":
         weights_file = None
-
+        columns_metadata_file = None
         print(f"The mode is {mode}, launching initial training...")
     else:
         weights_file = "checkpoints/last-weights.pt"
+        columns_metadata_file = "checkpoints/columns_metadata.json"
 
         print(f"The mode is {mode}, picking preemtped weights...")
 
     if data_dtype == "json":
         from utils import prepare_json_input
 
-        graphs, scaler = prepare_json_input(data_dir=datadir)
+        graphs, scaler, columns_metadata = prepare_json_input(data_dir=datadir, columns_metadata_file=columns_metadata_file)
         joblib.dump(scaler, "checkpoints/scaler.bin")
+        
+        with open(columns_metadata_file, "w") as write_handler:
+            ujson.dump(columns_metadata, write_handler)
+            
 
     else:
         graphs_filename = str(datadir / "graphs_train_val_test.bin")  # this is predefined name, used for testing
@@ -452,13 +457,8 @@ def main():
     
         
     index2logits_df.to_csv("index2logits_df.csv")
-    
-    
-        
     index2logits_list_of_dicts = index2logits_df.to_dict('records')
-    
-    
-    
+
     mr_table_output: dict[str, str] = write_output_to_YT(output=index2logits_list_of_dicts)
     
     with open(OUTPUT_FILE_NAME, "w") as out_handler:

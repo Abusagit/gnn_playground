@@ -341,7 +341,7 @@ FEATURE_TO_DTYPE = {
 }
 
 
-def read_table(mr_table) -> pd.DataFrame:
+def read_table(mr_table, columns_presented_in_train: OptionalColumns=None) -> pd.DataFrame:
     rows = list(yt.read_table(mr_table, format="yson", unordered=False))
     df = pd.DataFrame(rows)
 
@@ -366,6 +366,27 @@ def read_table(mr_table) -> pd.DataFrame:
         columns_types[col] = col_desired_dtype
         # df[col] = df[col].astype(col_desired_dtype)
 
+    
+    
+    met_columns = set(columns_types.keys())
+    
+    if len(set(ID_COLUMN_NAMES) & met_columns) != 3:
+        raise KeyError(f"Some of the obligatory columns ({ID_COLUMN_NAMES}) are missing!")
+        
+    if columns_presented_in_train is not None:
+        columns_unpresented_in_df = list(set(columns_presented_in_train) - met_columns)
+        
+        print(f"Columns which aren't presented in the dataframe but the model was trained using them: {columns_unpresented_in_df}")
+        
+        for col in columns_unpresented_in_df:
+            col_desired_dtype = FEATURE_TO_DTYPE[col]
+            nan_val_replacer = feature_dtype_to_value[col_desired_dtype]
+            print(col, nan_val_replacer, col_desired_dtype)
+            df[col] = nan_val_replacer
+            
+        
+        print("Added these columns as empties (nans) and processed")
+        
     df = df.astype(columns_types)
 
     # additional check
@@ -494,7 +515,7 @@ def filter_and_process_columns_and_project_on_users(
     df_targets = df[target_names]
 
     if constant_column_names is None:
-        constant_column_names = find_constant_columns(df_targets)
+        constant_column_names = find_constant_columns(df_features)
     df_features_transformed = filter_constant_columns(df_features, column_names=constant_column_names)
 
     if secretly_boolean_column_names_and_true_values is None:
@@ -615,7 +636,7 @@ def separate_features_for_graph_and_tests(
     df_projected: pd.DataFrame,
     column_names_to_remove: MutableSet[str],
     test: bool = False,
-    target_thresholds: Tuple[float, float] = (0.1, 0.5),
+    target_thresholds: Optional[Tuple[float, float]] = (0.1, 0.5),
 ):
     def separate_counts(df, count_name):
         counts = df[count_name].values
@@ -626,8 +647,11 @@ def separate_features_for_graph_and_tests(
         targets = (df[TARGET_COL_NAME].values > fraud_threshold).astype(np.int64)
         return targets
 
-    df_filtered = filter_data_by_target(df_projected, target_thresholds=target_thresholds)
-
+    if target_thresholds is not None:
+        df_filtered = filter_data_by_target(df_projected, target_thresholds=target_thresholds)
+    else:
+        df_filtered = df_projected
+        
     feature_names = [column_name for column_name in df_filtered.columns if column_name not in column_names_to_remove]
 
     targets: np.ndarray = separate_targets(df_filtered)
@@ -701,6 +725,7 @@ def convert_split_indices_to_mask(num_samples, split_indices):
 def main_prepare_mr_tables(
     mr_tables: List[Dict[str, str]],
     token=None,
+    columns_metadata:Optional[Dict[str, List[str]]]=None,
 ):
     print("mr_tables:", mr_tables)
 
@@ -810,6 +835,17 @@ def main_prepare_mr_tables(
         # breakpoint()
 
         print("Separated features for graph building")
+        
+        
+        features_in_train_df = list(set(df_train_projected.features) - {ID_COLUMN_NAMES} - {TARGET_COL_NAME} - {TRUST_COLUMNS}) + ID_COLUMN_NAMES
+        
+        _columns_metadata = dict(
+            features_in_train_df=features_in_train_df,
+            constant_column_names=constant_column_names,
+            secretly_boolean_column_names_and_true_values=secretly_boolean_column_names_and_true_values,
+            categorical_column_names=categorical_column_names,
+        )
+        
 
         num_samples_train = len(train_data["features"])
         indices_for_train, indices_for_validation = prepare_split_indices(num_samples_train, TRAIN_RATIO)
@@ -835,17 +871,62 @@ def main_prepare_mr_tables(
         PARAMS_OUTPUT["train_data"] = train_data
         PARAMS_OUTPUT["test_data"] = test_data
         PARAMS_OUTPUT["masks"] = masks
+        PARAMS_OUTPUT["columns_metadata"] = _columns_metadata
 
     else:  # INFERENCE PHASE
         PARAMS_OUTPUT["mode"] = "test"
-
         test_table = mr_tables[0]["table"]
+        
+        features_in_train_df=columns_metadata["features_in_train_df"]
+        constant_column_names=columns_metadata["constant_column_names"]
+        secretly_boolean_column_names_and_true_values=columns_metadata["secretly_boolean_column_names_and_true_values"]
+        categorical_column_names=columns_metadata["categorical_column_names"]
 
-        test_df: pd.DataFrame = read_table(test_table)
+        test_df: pd.DataFrame = read_table(test_table, columns_presented_in_train=features_in_train_df)
+        test_df[TARGET_COL_NAME] = False # NOTE this is placeholder
+        
+        test_df = test_df.copy()
+        
+        
+        df_test_projected, _, _, _ = filter_and_process_columns_and_project_on_users(
+            df=test_df,
+            feature_names=features_in_train_df + ID_COLUMN_NAMES,
+            target_names=TARGETS_COLUMNS, 
+            constant_column_names=constant_column_names,
+            secretly_boolean_column_names_and_true_values=secretly_boolean_column_names_and_true_values,
+            categorical_column_names=categorical_column_names,
+        )
+        
+        print(f"Projected inference data on users, {df_test_projected.shape=}")
+        
+        df_test_projected = df_test_projected.copy()
 
-        raise NotImplementedError("Work in progress")
+        
+        column_names_to_remove_test = [
+            INTERACTION_COUNT_NAME,
+            TRUST_COUNT_NAME,
+            FRAUD_COUNT_NAME,
+            TARGET_COL_NAME,
+        ] + TRUST_INDICATORS_NAMES
 
-    # NOTE nirvana doesnt use custom encoders for jsons, thus, I need to cast all numpy arrays to lists:
+        test_data: dict[str, Any] = separate_features_for_graph_and_tests(
+            df_projected=df_test_projected,
+            column_names_to_remove=column_names_to_remove_test,
+            test=False,
+            df_before_projection=test_df,
+            target_thresholds=None,
+        )
+        
+        masks = dict(
+            test_mask=np.ones(len(df_test_projected)),
+        )
+        
+        
+        PARAMS_OUTPUT["test_data"] = test_data
+        PARAMS_OUTPUT["masks"] = masks
+        PARAMS_OUTPUT["columns_metadata"] = columns_metadata
+
+        
 
     return PARAMS_OUTPUT
 
@@ -867,5 +948,3 @@ if __name__ == "__main__":
         ],
         token=os.environ.get("YT_TOKEN"),
     )
-
-    ujson.dump(output, open("JSON_INPUT", "w"))
