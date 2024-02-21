@@ -350,7 +350,7 @@ def main():
         graphs, scaler, columns_metadata = prepare_json_input(data_dir=datadir, columns_metadata_file=columns_metadata_file)
         joblib.dump(scaler, "checkpoints/scaler.bin")
         
-        with open(columns_metadata_file, "w") as write_handler:
+        with open("checkpoints/columns_metadata.json", "w") as write_handler:
             ujson.dump(columns_metadata, write_handler)
             
 
