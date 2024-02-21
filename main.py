@@ -234,6 +234,11 @@ class TrainEval:
             print(f"Valid Loss : {best_valid_loss}")
         else:
             f"The mode is {self.mode}, going straight to testing"
+            
+            
+        torch.save(self.model.state_dict(), "checkpoints/last-weights.pt")
+        print("Saved Last Weights")
+        copy_out_to_snapshot("checkpoints")
 
         if self.test_dataloader is not None:
             print("Performing test on test dataloader")
@@ -242,9 +247,6 @@ class TrainEval:
 
             return id2logits
 
-        torch.save(self.model.state_dict(), "checkpoints/last-weights.pt")
-        print("Saved Last Weights")
-        copy_out_to_snapshot("checkpoints")
 
         return {}
 
