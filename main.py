@@ -1,5 +1,4 @@
 import argparse
-import pickle
 import sys
 from pathlib import Path
 from typing import Mapping, Optional, Callable
@@ -342,7 +341,7 @@ def main():
         print(f"The mode is {mode}, launching initial training...")
     else:
         weights_file = "checkpoints/last-weights.pt"
-        columns_metadata_file = "checkpoints/columns_metadata.json"
+        columns_metadata_file = "checkpoints/columns_metadata"
 
         print(f"The mode is {mode}, picking preemtped weights...")
 
@@ -352,9 +351,9 @@ def main():
         graphs, scaler, columns_metadata = prepare_json_input(data_dir=datadir, columns_metadata_file=columns_metadata_file)
         joblib.dump(scaler, "checkpoints/scaler.bin")
         
-        with open("checkpoints/columns_metadata.json", "w") as write_handler:
-            ujson.dump(columns_metadata, write_handler)
-            
+        # breakpoint()
+        with open("checkpoints/columns_metadata", "wb") as write_handler:
+            joblib.dump(columns_metadata, write_handler)
 
     else:
         graphs_filename = str(datadir / "graphs_train_val_test.bin")  # this is predefined name, used for testing
