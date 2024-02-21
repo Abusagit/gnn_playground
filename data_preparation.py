@@ -434,7 +434,7 @@ def get_interactions_dataframes_for_train_and_test(
 def find_constant_columns(df):
     constant_column_mask = (df == df.iloc[0]).all(axis=0).values
     constant_column_indices = np.where(constant_column_mask)[0]
-    constant_column_names = df.columns[constant_column_indices]
+    constant_column_names = list(df.columns[constant_column_indices].values)
 
     return constant_column_names
 
@@ -473,7 +473,7 @@ def transform_secretly_boolean_columns(df, column_names_and_true_values=None):
 
 
 def find_categorical_columns(df):
-    categorical_column_names = df.select_dtypes(include=["object"]).columns
+    categorical_column_names = list(df.select_dtypes(include=["object"]).columns.values)
 
     return categorical_column_names
 
