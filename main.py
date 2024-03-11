@@ -305,9 +305,9 @@ def get_parser() -> argparse.ArgumentParser:
 
 
 TRAINING_PARAMETERS = {
-    "batch_size": 1000000,
-    "num_epochs": 1,
-    "max_num_neighbors": 50,  # -1 for all neighbors to be sampled
+    "batch_size": 10000,
+    "num_epochs": 150,
+    "max_num_neighbors": -1,  # -1 for all neighbors to be sampled
     "learning_rate": 0.0003,
     "weight_decay": 0.00001,
     "val_every_steps": 25,
