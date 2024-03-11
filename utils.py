@@ -145,20 +145,21 @@ def construct_subgraph_from_blocks(
     return new_graph.to(device)
 
 
-def prepare_json_input(data_dir: Path, columns_metadata_file: Optional[str] = None):
+def prepare_json_input(data_dir: Path, train_metadata_file: Optional[str] = None):
     scaler_state_filename: Path = data_dir / "scaler.bin"
     json_input_filename: Path = data_dir / "JSON_INPUT.json"
 
     with open(json_input_filename) as handler:
         mr_tables = ujson.load(handler)["mr_tables"]
 
-    if columns_metadata_file is not None:
-        columns_metadata = joblib.load(open(columns_metadata_file, "rb"))
+    if train_metadata_file is not None:
+        train_metadata = joblib.load(open(train_metadata_file, "rb"))
     else:
-        columns_metadata = None
+        train_metadata = None
 
-    input_dict = main_prepare_mr_tables(mr_tables=mr_tables, token=YT_TOKEN, columns_metadata=columns_metadata)
-
+    input_dict = main_prepare_mr_tables(mr_tables=mr_tables, token=YT_TOKEN, train_metadata=train_metadata)
+    
+    
     masks_dict: dict[str, np.ndarray] = input_dict["masks"]
 
     test_data_dict: dict[str, np.ndarray] = input_dict["test_data"]
@@ -197,7 +198,7 @@ def prepare_json_input(data_dir: Path, columns_metadata_file: Optional[str] = No
         _construct_dgl_graph(*adj_feats_targets_mask) for adj_feats_targets_mask in _zip_container
     )
 
-    return [graph_train, graph_valid, graph_test], scaler, input_dict["columns_metadata"]
+    return [graph_train, graph_valid, graph_test], scaler, input_dict["train_metadata"]
 
 
 def write_output_to_YT(output: list[dict[str, Any]], table_path_root: str = "//home/yr/fvelikon/tmp") -> dict[str, str]:

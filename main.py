@@ -85,15 +85,19 @@ class TrainEval:
         output_nodes_labels = subgraph.ndata[LABELS_DATA_NAME][output_nodes_mask]
         output_nodes_ids = subgraph.ndata[USERID_DATA_NAME][output_nodes_mask]
 
-        if apply_train_val_mask:
-            logits = output_nodes_logits[output_nodes_train_mask]
-            labels = output_nodes_labels[output_nodes_train_mask]
-            ids = output_nodes_ids[output_nodes_train_mask]
+        # if apply_train_val_mask:
+        #     logits = output_nodes_logits[output_nodes_train_mask]
+        #     labels = output_nodes_labels[output_nodes_train_mask]
+        #     ids = output_nodes_ids[output_nodes_train_mask]
 
-        else:
-            logits = output_nodes_logits
-            labels = output_nodes_labels
-            ids = output_nodes_ids
+        # else:
+        #     logits = output_nodes_logits
+        #     labels = output_nodes_labels
+        #     ids = output_nodes_ids
+            
+        logits = output_nodes_logits[output_nodes_train_mask]
+        labels = output_nodes_labels[output_nodes_train_mask]
+        ids = output_nodes_ids[output_nodes_train_mask]
 
         return dict(
             output_nodes_train_val_mask=output_nodes_train_mask,
@@ -174,7 +178,7 @@ class TrainEval:
         for t, data in enumerate(tk, 1):
             subgraph: dgl.DGLGraph = self.get_subgraph_from_data(data)
 
-            return_dict = self.get_logits_and_labels_for_output_nodes(subgraph, apply_train_val_mask=False)
+            return_dict = self.get_logits_and_labels_for_output_nodes(subgraph)
 
             logits = return_dict["logits"]
             true_labels = return_dict["labels"]
@@ -284,20 +288,30 @@ def get_parser() -> argparse.ArgumentParser:
         help="Number of training epochs",
         default=1,
     )
-
+    
+    parser.add_argument(
+        "--batch",
+        type=int,
+        help="Batch size",
+        default=1000000,
+    )
+    
+    
+    
+    
     parser.add_argument("--debug", action="store_true", help="Debug mode")
 
     return parser
 
 
 TRAINING_PARAMETERS = {
-    "batch_size": 30000,
+    "batch_size": 1000000,
     "num_epochs": 1,
     "max_num_neighbors": 50,  # -1 for all neighbors to be sampled
     "learning_rate": 0.0003,
     "weight_decay": 0.00001,
-    "val_every_steps": 5,
-    "early_stopping_steps": 40,
+    "val_every_steps": 25,
+    "early_stopping_steps": 1000,
     "num_workers": 12,
 }
 
@@ -337,23 +351,23 @@ def main():
     # NOTE: this is not the final implementation of training and evaluation!
     if mode == "training":
         weights_file = None
-        columns_metadata_file = None
+        train_metadata_file = None
         print(f"The mode is {mode}, launching initial training...")
     else:
         weights_file = "checkpoints/last-weights.pt"
-        columns_metadata_file = "checkpoints/columns_metadata"
+        train_metadata_file = "checkpoints/train_metadata"
 
         print(f"The mode is {mode}, picking preemtped weights...")
 
     if data_dtype == "json":
         from utils import prepare_json_input
 
-        graphs, scaler, columns_metadata = prepare_json_input(data_dir=datadir, columns_metadata_file=columns_metadata_file)
+        graphs, scaler, train_metadata = prepare_json_input(data_dir=datadir, train_metadata_file=train_metadata_file)
         joblib.dump(scaler, "checkpoints/scaler.bin")
         
         # breakpoint()
-        with open("checkpoints/columns_metadata", "wb") as write_handler:
-            joblib.dump(columns_metadata, write_handler)
+        with open("checkpoints/train_metadata", "wb") as write_handler:
+            joblib.dump(train_metadata, write_handler)
 
     else:
         graphs_filename = str(datadir / "graphs_train_val_test.bin")  # this is predefined name, used for testing

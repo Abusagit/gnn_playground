@@ -418,13 +418,12 @@ def get_interactions_dataframes_for_train_and_test(
     date_delta_test = sr_date_test.max() - sr_date_test.min()
 
     extra_indices_test = np.where(sr_date_train >= sr_date_train.min() + date_delta_test)[0]
-
+    
     df_interactions_train = df_pure_data_train
     df_interactions_test = pd.concat(
         [df_pure_data_test, df_pure_data_train.iloc[extra_indices_test]],
         ignore_index=True,
     )
-
     initial_test_indices = np.arange(len(df_pure_data_test))
 
     return df_interactions_train, df_interactions_test, initial_test_indices
@@ -538,7 +537,7 @@ def filter_and_process_columns_and_project_on_users(
 
     colname_to_project = "userid"
     colnames_to_remove = ["orgid", "date", "time", HASH_COL]  # ID_COLUMN_NAMES + [HASH_COL]
-
+    # breakpoint()
     # print(f"\n\n\n{df_data.columns=}\n\n\n")
     if trust_names is not None:  # TEST MODE
         # need additional  handling of possible more categorical columns in test data:
@@ -570,7 +569,7 @@ def filter_and_process_columns_and_project_on_users(
         df_projected = pd.merge(
             left=_intermediate_merge,
             right=project_data_on_feature(
-                df=df_targets.iloc[initial_test_indices],
+                df=df_targets,
                 column_name_to_project=colname_to_project,
                 column_names_to_remove=colnames_to_remove,
                 count_column_name=FRAUD_COUNT_NAME,
@@ -588,7 +587,6 @@ def filter_and_process_columns_and_project_on_users(
             column_names_to_remove=colnames_to_remove,
             count_column_name=INTERACTION_COUNT_NAME,
         )
-    # breakpoint()
     return df_projected, constant_column_names, secretly_boolean_column_names_and_true_values, categorical_column_names
 
 
@@ -645,7 +643,7 @@ def separate_features_for_graph_and_tests(
         _normal_threshold, fraud_threshold = target_thresholds
         targets = (df[TARGET_COL_NAME].values > fraud_threshold).astype(np.int64)
         return targets
-
+    
     if target_thresholds is not None:
         df_filtered = filter_data_by_target(df_projected, target_thresholds=target_thresholds)
     else:
@@ -662,7 +660,8 @@ def separate_features_for_graph_and_tests(
         trust_counts: np.ndarray = separate_counts(df_filtered, TRUST_COUNT_NAME)
         fraud_counts: np.ndarray = separate_counts(df_filtered, FRAUD_COUNT_NAME)
         trust_indicators: np.ndarray = df_filtered[TRUST_INDICATORS_NAMES].values.astype(float)
-
+        
+        # indices_test = df_projected["train"].v
         update_dict = dict(
             trust_counts=trust_counts,
             fraud_counts=fraud_counts,
@@ -724,7 +723,7 @@ def convert_split_indices_to_mask(num_samples, split_indices):
 def main_prepare_mr_tables(
     mr_tables: List[Dict[str, str]],
     token=None,
-    columns_metadata: Optional[Dict[str, List[str]]] = None,
+    train_metadata: Optional[Dict[str, List[str]]] = None,
 ):
     print("mr_tables:", mr_tables)
 
@@ -734,7 +733,7 @@ def main_prepare_mr_tables(
 
     PARAMS_OUTPUT = {}
 
-    if len(mr_tables) == 2:  # TRAINING PHASE
+    if train_metadata is None:  # TRAINING PHASE
         PARAMS_OUTPUT["mode"] = "train"
 
         train_table = mr_tables[0]["table"]
@@ -743,7 +742,8 @@ def main_prepare_mr_tables(
         print("TESTING")
         test_df: pd.DataFrame = read_table(test_table)
         # breakpoint()
-
+        if set(TRUST_INDICATORS_NAMES) & set(test_df.columns.values) != set(TRUST_INDICATORS_NAMES):
+            test_df[TRUST_INDICATORS_NAMES] = -1.0
         # train_df.to_csv("train_df.csv")
         # test_df.to_csv("test_df.csv")
 
@@ -767,7 +767,7 @@ def main_prepare_mr_tables(
         print(df_interactions_train.head(), f"{df_interactions_train.shape=}, {df_interactions_train.columns}")
         print(df_interactions_test.head(), f"{df_interactions_test.shape=}, {df_interactions_test.columns}")
 
-        pure_target_names: list[str] = TARGETS_COLUMNS  # + [HASH_COL]
+        pure_target_names: list[str] = TARGETS_COLUMNS # + [HASH_COL]
         pure_trust_names: list[str] = TRUST_COLUMNS  # + [HASH_COL]
         pure_feature_names: list[str] = (
             ##[HASH_COL]
@@ -775,6 +775,8 @@ def main_prepare_mr_tables(
         )
 
         print(f"{pure_target_names=}\n{pure_trust_names=}\n{pure_feature_names=}")
+        
+
 
         (
             df_train_projected,
@@ -846,16 +848,17 @@ def main_prepare_mr_tables(
             + ID_COLUMN_NAMES
         )
 
-        _columns_metadata = dict(
+        _train_metadata = dict(
             features_in_train_df=features_in_train_df,
             constant_column_names=constant_column_names,
             secretly_boolean_column_names_and_true_values=secretly_boolean_column_names_and_true_values,
             categorical_column_names=categorical_column_names,
+            train_df=train_df,
         )
 
         num_samples_train = len(train_data["features"])
         indices_for_train, indices_for_validation = prepare_split_indices(num_samples_train, TRAIN_RATIO)
-
+        
         train_mask = convert_split_indices_to_mask(num_samples=num_samples_train, split_indices=indices_for_train)
         val_mask = convert_split_indices_to_mask(num_samples=num_samples_train, split_indices=indices_for_validation)
 
@@ -865,7 +868,8 @@ def main_prepare_mr_tables(
         indices_test = np.where(np.all(~np.isnan(test_data["trust_indicators"]), axis=1))[0]
 
         test_mask = convert_split_indices_to_mask(num_samples=num_samples_test, split_indices=indices_test)
-
+        
+        
         masks = dict(
             train_mask=train_mask,
             val_mask=val_mask,
@@ -877,23 +881,36 @@ def main_prepare_mr_tables(
         PARAMS_OUTPUT["train_data"] = train_data
         PARAMS_OUTPUT["test_data"] = test_data
         PARAMS_OUTPUT["masks"] = masks
-        PARAMS_OUTPUT["columns_metadata"] = _columns_metadata
+        PARAMS_OUTPUT["train_metadata"] = _train_metadata
 
     else:  # INFERENCE PHASE
         PARAMS_OUTPUT["mode"] = "test"
         test_table = mr_tables[0]["table"]
 
-        features_in_train_df = columns_metadata["features_in_train_df"]
-        constant_column_names = columns_metadata["constant_column_names"]
-        secretly_boolean_column_names_and_true_values = columns_metadata[
+            
+        train_ref_data = train_metadata["train_df"]
+
+        features_in_train_df = train_metadata["features_in_train_df"]
+        constant_column_names = train_metadata["constant_column_names"]
+        secretly_boolean_column_names_and_true_values = train_metadata[
             "secretly_boolean_column_names_and_true_values"
         ]
-        categorical_column_names = columns_metadata["categorical_column_names"]
+        categorical_column_names = train_metadata["categorical_column_names"]
 
         test_df: pd.DataFrame = read_table(test_table, columns_presented_in_train=features_in_train_df)
         test_df[TARGET_COL_NAME] = False  # NOTE this is placeholder
-
-        test_df = test_df.copy()
+        
+        if set(TRUST_INDICATORS_NAMES) & set(test_df.columns.values) != set(TRUST_INDICATORS_NAMES):
+            test_df[TRUST_INDICATORS_NAMES] = -1.0
+        
+        (
+            df_interactions_train,
+            df_interactions_test,
+            initial_test_indices,
+        ) = get_interactions_dataframes_for_train_and_test(train_ref_data, test_df)
+        
+        
+        test_df = df_interactions_test.copy()
 
         df_test_projected, _, _, _ = filter_and_process_columns_and_project_on_users(
             df=test_df,
@@ -902,6 +919,8 @@ def main_prepare_mr_tables(
             constant_column_names=constant_column_names,
             secretly_boolean_column_names_and_true_values=secretly_boolean_column_names_and_true_values,
             categorical_column_names=categorical_column_names,
+            trust_names=TRUST_COLUMNS,
+            initial_test_indices=initial_test_indices,
         )
 
         print(f"Projected inference data on users, {df_test_projected.shape=}")
@@ -918,18 +937,23 @@ def main_prepare_mr_tables(
         test_data: dict[str, Any] = separate_features_for_graph_and_tests(
             df_projected=df_test_projected,
             column_names_to_remove=column_names_to_remove_test,
-            test=False,
+            test=True,
             df_before_projection=test_df,
             target_thresholds=None,
         )
+        num_samples_test = len(test_data["features"])
+        # breakpoint()
+        indices_test = np.where(np.all(~np.isnan(test_data["trust_indicators"]), axis=1))[0]
+
+        test_mask = convert_split_indices_to_mask(num_samples=num_samples_test, split_indices=indices_test)
 
         masks = dict(
-            test_mask=np.ones(len(df_test_projected)),
+            test_mask=test_mask,
         )
 
         PARAMS_OUTPUT["test_data"] = test_data
         PARAMS_OUTPUT["masks"] = masks
-        PARAMS_OUTPUT["columns_metadata"] = columns_metadata
+        PARAMS_OUTPUT["train_metadata"] = train_metadata
         
         print("Created inference graph")
 
