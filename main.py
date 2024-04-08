@@ -293,9 +293,15 @@ def get_parser() -> argparse.ArgumentParser:
         "--batch",
         type=int,
         help="Batch size",
-        default=1000000,
+        default=2000000,
     )
     
+    parser.add_argument(
+        "--device",
+        type=int,
+        default=None,
+        help="Device index for GPU"
+    )
     
     
     
@@ -305,7 +311,7 @@ def get_parser() -> argparse.ArgumentParser:
 
 
 TRAINING_PARAMETERS = {
-    "batch_size": 10000,
+    "batch_size": 2000000,
     "num_epochs": 150,
     "max_num_neighbors": -1,  # -1 for all neighbors to be sampled
     "learning_rate": 0.0003,
@@ -336,6 +342,10 @@ MODEL_PARAMS = {
 
 def main():
     args = get_parser().parse_args()
+    
+    if args.device is not None:
+        DEVICE = torch.device(f"cuda:{args.device}" if torch.cuda.is_available() else "cpu")
+        
 
     #############
     # IMPORTANT #

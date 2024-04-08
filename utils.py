@@ -212,9 +212,9 @@ def write_output_to_YT(output: list[dict[str, Any]], table_path_root: str = "//h
     random_name = "".join(random.choices(string.ascii_lowercase, k=20))
     table_path = "{}/table_antifraud_{}".format(table_path_root, random_name)
 
-    table_rows: list[Row] = [Row(userid=row["userid"], score=row["score"]) for row in output]
+    table_rows: List[Row] = [Row(userid=row["userid"], score=row["score"]) for row in output]
 
-    print(f"Trying to save the table in {table_path}")
+    print(f"Trying to save the table to {table_path}")
 
     yt.write_table_structured(table_path, Row, table_rows, client=client)
 
