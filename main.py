@@ -346,7 +346,7 @@ def main():
     if args.device is not None:
         DEVICE = torch.device(f"cuda:{args.device}" if torch.cuda.is_available() else "cpu")
         
-
+    TRAINING_PARAMETERS["batch_size"] = args.batch
     #############
     # IMPORTANT #
     #############
