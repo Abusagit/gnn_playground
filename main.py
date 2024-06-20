@@ -303,6 +303,12 @@ def get_parser() -> argparse.ArgumentParser:
         help="Device index for GPU"
     )
     
+    parser.add_argument(
+        "--out_table_path",
+        type=int,
+        default="//home/yr/fvelikon/tmp",
+        help="Root directory for writing YT table with results"
+    )
     
     
     parser.add_argument("--debug", action="store_true", help="Debug mode")
@@ -358,6 +364,7 @@ def main():
     model_type: str = args.model_type
     data_dtype: str = args.data_type
     mode: str = args.mode
+    table_output_root_path: str = args.out_table_path
 
     print("Device is ", DEVICE)
 
@@ -486,8 +493,11 @@ def main():
         
     index2logits_df.to_csv("index2logits_df.csv")
     index2logits_list_of_dicts = index2logits_df.to_dict('records')
-
-    mr_table_output: dict[str, str] = write_output_to_YT(output=index2logits_list_of_dicts)
+    
+    
+    
+    mr_table_output: dict[str, str] = write_output_to_YT(output=index2logits_list_of_dicts, 
+                                                         table_path_root=table_output_root_path)
     
     with open(OUTPUT_FILE_NAME, "w") as out_handler:
         for line in map(ujson.dumps, index2logits_list_of_dicts):
