@@ -87,19 +87,20 @@ class TrainEval:
         output_nodes_labels = subgraph.ndata[LABELS_DATA_NAME][output_nodes_mask]
         output_nodes_ids = subgraph.ndata[USERID_DATA_NAME][output_nodes_mask]
 
-        # if apply_train_val_mask:
-        #     logits = output_nodes_logits[output_nodes_train_mask]
-        #     labels = output_nodes_labels[output_nodes_train_mask]
-        #     ids = output_nodes_ids[output_nodes_train_mask]
+        if apply_train_val_mask:
+            logits = output_nodes_logits[output_nodes_train_mask]
+            labels = output_nodes_labels[output_nodes_train_mask]
+            ids = output_nodes_ids[output_nodes_train_mask]
 
-        # else:
-        #     logits = output_nodes_logits
-        #     labels = output_nodes_labels
-        #     ids = output_nodes_ids
-            
-        logits = output_nodes_logits[output_nodes_train_mask]
-        labels = output_nodes_labels[output_nodes_train_mask]
-        ids = output_nodes_ids[output_nodes_train_mask]
+        else:
+            logits = output_nodes_logits
+            labels = output_nodes_labels
+            ids = output_nodes_ids
+        
+        # TODO rebase changes to previous state
+        # logits = output_nodes_logits[output_nodes_train_mask]
+        # labels = output_nodes_labels[output_nodes_train_mask]
+        # ids = output_nodes_ids[output_nodes_train_mask]
 
         return dict(
             output_nodes_train_val_mask=output_nodes_train_mask,
@@ -150,7 +151,7 @@ class TrainEval:
         for t, data in enumerate(tk, 1):
             subgraph: dgl.DGLGraph = self.get_subgraph_from_data(data)
 
-            return_dict = self.get_logits_and_labels_for_output_nodes(subgraph)
+            return_dict = self.get_logits_and_labels_for_output_nodes(subgraph, apply_train_val_mask=False)
             loss = self.criterion(return_dict["logits"], return_dict["labels"])
 
             total_loss += loss.item()
