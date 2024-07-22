@@ -4,8 +4,10 @@ import string
 import sys
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Dict
 
+from dataclasses import dataclass
+import yaml
 import dgl
 import joblib
 import numpy as np
@@ -27,6 +29,99 @@ USERID_DATA_NAME = "userid"
 # MODE_FIELD = "mode"
 
 YT_TOKEN = os.environ.get("YT_TOKEN")
+
+
+@dataclass
+class Config:
+    # Data options
+    remove_self_loops: bool = True
+    table_output_root_path: str = "//home/yr/fvelikon/tmp"
+    
+    # Training parameters
+    batch_size: int = 2000000
+    num_epochs: int = 150
+    max_num_neighbors: int = -1 # -1 for all neighbors to be sampled
+    
+    num_workers: int = 12
+    learning_rate: float = 0.0003
+    weight_decay: float = 0.00001
+    
+    val_every_steps: int = 25
+    early_stopping_steps: int = 1000
+    
+    # Model Parameters
+    num_hidden_features: int = 128
+    normalisation_name: str = "batch"
+    
+    # Convolutiom parameters
+    convolution_name: str = "sage"
+    convolution_params: Dict[str, str] = {
+        "aggregator_type": "mean",
+    }
+    
+    activation_name: str = "gelu"
+    apply_skip_connection: bool = True
+    num_preprocessing_layers: int = 1
+    num_encoder_layers: int = 2
+    
+    num_predictor_layers: int = 1
+    
+    # PLRE parameters
+    n_frequencies: int = 48
+    frequency_scale: float = 0.02
+    d_embedding: int = 16
+    lite: bool = True # lite Linear block option
+    
+
+    @property
+    def MODEL_PARAMS(self):
+        return dict(
+            num_hidden_features=self.num_hidden_features,
+            normalisation_name=self.normalisation_name,
+            convolution_name=self.convolution_name,
+            convolution_params=self.convolution_params,
+            activation_name=self.activation_name,
+            apply_skip_connection=self.apply_skip_connection,
+            num_preprocessing_layers=self.num_preprocessing_layers,
+            num_encoder_layers=self.num_encoder_layers,
+            num_predictor_layers=self.num_predictor_layers,
+            
+            n_frequencies=self.n_frequencies,
+            frequency_scale=self.frequency_scale,
+            d_embedding=self.d_embedding,
+            
+            
+        )
+
+    @property
+    def TRAINING_PARAMS(self):
+        return dict(
+            batch_size=self.batch_size,
+            num_epochs=self.num_epochs,
+            max_num_neighbors=self.max_num_neighbors,
+
+            num_workers=self.num_workers,
+            learning_rate=self.learning_rate,
+            weight_decay=self.weight_decay,
+            
+            val_every_steps=self.val_every_steps,
+            early_stopping_steps=self.early_stopping_steps,
+
+        )
+        
+
+def get_config(config_dir: Path):
+    yaml_config = config_dir / "config.yaml"
+    
+    if not yaml_config.exists():
+        raise f"No configs were found in {str(config_dir)}. Supported names are 'config.json' and 'config.yaml'"
+
+    with open(yaml_config) as f_read:
+        config_dict: Dict[str, Any] = yaml.open(f_read)
+        
+    config = Config(**config_dict)
+    
+    return config    
 
 
 def _scale_features(train_val_test_features_container: List[List[float]], scaler_state_file: Path = None):
