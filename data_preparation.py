@@ -38,23 +38,23 @@ FEATURE_TO_DTYPE = {
     "userid": np.int64,
     "has_reaction": bool,
     "has_review": bool,
-    "rating": np.int32,
+    "rating": np.int64,
     "reaction": object,
-    "time": np.int32,
-    "user_1": np.int32,
-    "user_4": np.int32,
+    "time": np.int64,
+    "user_1": np.int64,
+    "user_4": np.int64,
     "user_5": object,
     "user_6": object,
     "user_8": object,
-    "user_9": np.int32,
-    "user_10": np.int32,
-    "user_12": np.int32,
+    "user_9": np.int64,
+    "user_10": np.int64,
+    "user_12": np.int64,
     "user_13": object,
-    "user_15": np.int32,
+    "user_15": np.int64,
     "user_16": bool,
-    "user_17": np.int32,
-    "user_18": np.int32,
-    "user_19": np.int32,
+    "user_17": np.int64,
+    "user_18": np.int64,
+    "user_19": np.int64,
     "user_21": object,
     "user_22": object,
     "user_23": object,
@@ -91,245 +91,245 @@ FEATURE_TO_DTYPE = {
     "user_54": object,
     "user_55": object,
     "user_56": object,
-    "user_57": np.float32,
-    "user_58": np.float32,
-    "user_59": np.float32,
-    "user_61": np.int32,
-    "user_62": np.int32,
-    "user_63": np.int32,
-    "user_64": np.int32,
-    "user_65": np.int32,
-    "user_66": np.float32,
-    "user_68": np.int32,
-    "user_69": np.int32,
+    "user_57": np.float64,
+    "user_58": np.float64,
+    "user_59": np.float64,
+    "user_61": np.int64,
+    "user_62": np.int64,
+    "user_63": np.int64,
+    "user_64": np.int64,
+    "user_65": np.int64,
+    "user_66": np.float64,
+    "user_68": np.int64,
+    "user_69": np.int64,
     "user_70": object,
     "user_71": bool,
-    "user_72": np.int32,
+    "user_72": np.int64,
     "user_73": bool,
     "user_74": bool,
-    "user_75": np.int32,
+    "user_75": np.int64,
     "user_76": bool,
     "user_77": bool,
     "user_78": bool,
     "user_79": bool,
     "user_80": bool,
     "user_81": bool,
-    "user_82": np.int32,
-    "user_83": np.int32,
+    "user_82": np.int64,
+    "user_83": np.int64,
     "user_84": bool,
-    "user_85": np.int32,
-    "user_86": np.int32,
+    "user_85": np.int64,
+    "user_86": np.int64,
     "user_87": object,
     "user_88": bool,
-    "user_89": np.float32,
-    "user_90": np.float32,
-    "user_91": np.int32,
-    "user_92": np.int32,
-    "user_93": np.int32,
-    "user_94": np.float32,
-    "user_95": np.float32,
-    "user_96": np.int32,
-    "user_97": np.int32,
-    "user_98": np.int32,
-    "user_99": np.int32,
-    "user_100": np.int32,
-    "user_101": np.int32,
-    "user_102": np.int32,
-    "user_103": np.int32,
-    "user_104": np.int32,
-    "user_105": np.int32,
-    "user_106": np.int32,
-    "user_107": np.int32,
+    "user_89": np.float64,
+    "user_90": np.float64,
+    "user_91": np.int64,
+    "user_92": np.int64,
+    "user_93": np.int64,
+    "user_94": np.float64,
+    "user_95": np.float64,
+    "user_96": np.int64,
+    "user_97": np.int64,
+    "user_98": np.int64,
+    "user_99": np.int64,
+    "user_100": np.int64,
+    "user_101": np.int64,
+    "user_102": np.int64,
+    "user_103": np.int64,
+    "user_104": np.int64,
+    "user_105": np.int64,
+    "user_106": np.int64,
+    "user_107": np.int64,
     "user_108": object,
     "user_109": bool,
     "user_110": bool,
-    "user_111": np.int32,
-    "user_112": np.int32,
-    "user_113": np.int32,
-    "user_114": np.int32,
-    "user_115": np.int32,
+    "user_111": np.int64,
+    "user_112": np.int64,
+    "user_113": np.int64,
+    "user_114": np.int64,
+    "user_115": np.int64,
     "user_116": bool,
-    "user_117": np.int32,
-    "user_118": np.int32,
-    "user_119": np.int32,
-    "user_120": np.int32,
-    "user_121": np.int32,
-    "user_122": np.int32,
+    "user_117": np.int64,
+    "user_118": np.int64,
+    "user_119": np.int64,
+    "user_120": np.int64,
+    "user_121": np.int64,
+    "user_122": np.int64,
     "user_123": bool,
-    "user_124": np.int32,
-    "user_125": np.int32,
-    "user_126": np.int32,
-    "user_127": np.int32,
-    "user_128": np.int32,
-    "user_129": np.int32,
-    "user_130": np.int32,
-    "user_131": np.int32,
-    "user_132": np.int32,
-    "user_133": np.int32,
-    "user_134": np.int32,
-    "user_135": np.int32,
-    "user_136": np.int32,
-    "user_137": np.int32,
-    "user_138": np.int32,
-    "user_139": np.int32,
-    "user_140": np.int32,
+    "user_124": np.int64,
+    "user_125": np.int64,
+    "user_126": np.int64,
+    "user_127": np.int64,
+    "user_128": np.int64,
+    "user_129": np.int64,
+    "user_130": np.int64,
+    "user_131": np.int64,
+    "user_132": np.int64,
+    "user_133": np.int64,
+    "user_134": np.int64,
+    "user_135": np.int64,
+    "user_136": np.int64,
+    "user_137": np.int64,
+    "user_138": np.int64,
+    "user_139": np.int64,
+    "user_140": np.int64,
     "user_141": bool,
-    "user_142": np.float32,
-    "user_143": np.int32,
-    "user_144": np.int32,
+    "user_142": np.float64,
+    "user_143": np.int64,
+    "user_144": np.int64,
     "user_146": bool,
     "user_147": bool,
-    "user_148": np.int32,
-    "user_149": np.int32,
+    "user_148": np.int64,
+    "user_149": np.int64,
     "user_150": bool,
     "user_151": object,
-    "user_152": np.float32,
-    "user_153": np.int32,
-    "user_154": np.int32,
-    "user_155": np.int32,
-    "user_156": np.int32,
-    "user_157": np.float32,
-    "user_158": np.int32,
-    "user_159": np.int32,
-    "user_160": np.int32,
-    "user_161": np.int32,
-    "org_2": np.float32,
-    "org_3": np.float32,
-    "org_4": np.int32,
-    "org_5": np.int32,
-    "org_8": np.float32,
+    "user_152": np.float64,
+    "user_153": np.int64,
+    "user_154": np.int64,
+    "user_155": np.int64,
+    "user_156": np.int64,
+    "user_157": np.float64,
+    "user_158": np.int64,
+    "user_159": np.int64,
+    "user_160": np.int64,
+    "user_161": np.int64,
+    "org_2": np.float64,
+    "org_3": np.float64,
+    "org_4": np.int64,
+    "org_5": np.int64,
+    "org_8": np.float64,
     "org_9": object,
-    "org_10": np.int32,
-    "org_11": np.int32,
-    "org_12": np.int32,
-    "org_13": np.float32,
-    "org_14": np.int32,
-    "org_15": np.float32,
-    "org_16": np.int32,
-    "org_17": np.int32,
-    "org_18": np.int32,
-    "org_19": np.int32,
-    "org_20": np.int32,
-    "org_21": np.float32,
-    "org_22": np.float32,
-    "org_23": np.int32,
-    "org_24": np.float32,
-    "org_25": np.float32,
-    "org_26": np.float32,
-    "org_27": np.int32,
-    "org_28": np.int32,
-    "org_29": np.int32,
-    "org_30": np.float32,
-    "org_31": np.float32,
-    "org_32": np.float32,
-    "org_33": np.float32,
-    "org_34": np.int32,
-    "org_35": np.int32,
-    "org_36": np.float32,
-    "org_37": np.float32,
-    "org_38": np.float32,
-    "org_39": np.float32,
-    "org_40": np.float32,
-    "org_41": np.float32,
-    "org_42": np.float32,
-    "org_43": np.int32,
-    "org_44": np.int32,
-    "org_45": np.int32,
-    "org_46": np.int32,
-    "org_47": np.int32,
-    "org_48": np.int32,
-    "org_49": np.int32,
-    "org_50": np.int32,
-    "org_51": np.int32,
-    "org_52": np.int32,
-    "org_53": np.int32,
-    "org_54": np.int32,
-    "org_55": np.int32,
-    "org_56": np.int32,
-    "org_57": np.int32,
-    "org_58": np.float32,
-    "org_59": np.int32,
-    "org_60": np.float32,
-    "org_61": np.float32,
-    "org_62": np.float32,
-    "org_63": np.float32,
-    "org_64": np.float32,
-    "org_65": np.float32,
-    "org_66": np.float32,
-    "org_67": np.float32,
-    "org_68": np.float32,
-    "org_69": np.float32,
-    "org_70": np.float32,
-    "org_71": np.int32,
-    "org_72": np.float32,
-    "org_73": np.float32,
-    "org_74": np.float32,
-    "org_75": np.float32,
-    "org_76": np.float32,
-    "org_77": np.float32,
-    "org_78": np.float32,
-    "org_79": np.float32,
-    "org_80": np.float32,
-    "org_81": np.float32,
-    "org_82": np.float32,
-    "org_84": np.int32,
-    "org_85": np.int32,
-    "org_86": np.int32,
-    "org_87": np.int32,
-    "org_88": np.int32,
-    "org_89": np.int32,
-    "org_90": np.int32,
+    "org_10": np.int64,
+    "org_11": np.int64,
+    "org_12": np.int64,
+    "org_13": np.float64,
+    "org_14": np.int64,
+    "org_15": np.float64,
+    "org_16": np.int64,
+    "org_17": np.int64,
+    "org_18": np.int64,
+    "org_19": np.int64,
+    "org_20": np.int64,
+    "org_21": np.float64,
+    "org_22": np.float64,
+    "org_23": np.int64,
+    "org_24": np.float64,
+    "org_25": np.float64,
+    "org_26": np.float64,
+    "org_27": np.int64,
+    "org_28": np.int64,
+    "org_29": np.int64,
+    "org_30": np.float64,
+    "org_31": np.float64,
+    "org_32": np.float64,
+    "org_33": np.float64,
+    "org_34": np.int64,
+    "org_35": np.int64,
+    "org_36": np.float64,
+    "org_37": np.float64,
+    "org_38": np.float64,
+    "org_39": np.float64,
+    "org_40": np.float64,
+    "org_41": np.float64,
+    "org_42": np.float64,
+    "org_43": np.int64,
+    "org_44": np.int64,
+    "org_45": np.int64,
+    "org_46": np.int64,
+    "org_47": np.int64,
+    "org_48": np.int64,
+    "org_49": np.int64,
+    "org_50": np.int64,
+    "org_51": np.int64,
+    "org_52": np.int64,
+    "org_53": np.int64,
+    "org_54": np.int64,
+    "org_55": np.int64,
+    "org_56": np.int64,
+    "org_57": np.int64,
+    "org_58": np.float64,
+    "org_59": np.int64,
+    "org_60": np.float64,
+    "org_61": np.float64,
+    "org_62": np.float64,
+    "org_63": np.float64,
+    "org_64": np.float64,
+    "org_65": np.float64,
+    "org_66": np.float64,
+    "org_67": np.float64,
+    "org_68": np.float64,
+    "org_69": np.float64,
+    "org_70": np.float64,
+    "org_71": np.int64,
+    "org_72": np.float64,
+    "org_73": np.float64,
+    "org_74": np.float64,
+    "org_75": np.float64,
+    "org_76": np.float64,
+    "org_77": np.float64,
+    "org_78": np.float64,
+    "org_79": np.float64,
+    "org_80": np.float64,
+    "org_81": np.float64,
+    "org_82": np.float64,
+    "org_84": np.int64,
+    "org_85": np.int64,
+    "org_86": np.int64,
+    "org_87": np.int64,
+    "org_88": np.int64,
+    "org_89": np.int64,
+    "org_90": np.int64,
     "org_91": bool,
     "org_93": object,
-    "org_94": np.float32,
-    "org_95": np.int32,
-    "org_98": np.int32,
-    "org_99": np.float32,
-    "org_100": np.int32,
+    "org_94": np.float64,
+    "org_95": np.int64,
+    "org_98": np.int64,
+    "org_99": np.float64,
+    "org_100": np.int64,
     "org_101": object,
     "org_102": object,
-    "org_103": np.int32,
-    "org_104": np.int32,
-    "org_105": np.float32,
-    "org_106": np.float32,
-    "org_107": np.int32,
-    "org_108": np.int32,
-    "org_109": np.int32,
-    "org_110": np.int32,
-    "org_111": np.int32,
-    "org_112": np.float32,
-    "org_113": np.int32,
-    "org_114": np.int32,
-    "org_115": np.int32,
-    "org_117": np.int32,
+    "org_103": np.int64,
+    "org_104": np.int64,
+    "org_105": np.float64,
+    "org_106": np.float64,
+    "org_107": np.int64,
+    "org_108": np.int64,
+    "org_109": np.int64,
+    "org_110": np.int64,
+    "org_111": np.int64,
+    "org_112": np.float64,
+    "org_113": np.int64,
+    "org_114": np.int64,
+    "org_115": np.int64,
+    "org_117": np.int64,
     "org_118": bool,
     "org_119": bool,
-    "review_2": np.float32,
+    "review_2": np.float64,
     "review_3": bool,
     "review_4": bool,
-    "review_5": np.int32,
-    "review_7": np.int32,
-    "review_8": np.int32,
-    "review_9": np.int32,
-    "review_11": np.int32,
-    "review_12": np.int32,
-    "review_13": np.float32,
-    "review_14": np.float32,
-    "review_15": np.float32,
-    "review_16": np.int32,
-    "review_17": np.float32,
+    "review_5": np.int64,
+    "review_7": np.int64,
+    "review_8": np.int64,
+    "review_9": np.int64,
+    "review_11": np.int64,
+    "review_12": np.int64,
+    "review_13": np.float64,
+    "review_14": np.float64,
+    "review_15": np.float64,
+    "review_16": np.int64,
+    "review_17": np.float64,
     "review_18": object,
-    "review_20": np.int32,
-    "review_21": np.int32,
-    "review_22": np.int32,
-    "review_23": np.int32,
-    "review_24": np.int32,
+    "review_20": np.int64,
+    "review_21": np.int64,
+    "review_22": np.int64,
+    "review_23": np.int64,
+    "review_24": np.int64,
     "review_26": object,
     "review_28": object,
-    "review_29": np.int32,
-    "review_30": np.float32,
+    "review_29": np.int64,
+    "review_30": np.float64,
     "review_31": bool,
-    "review_32": np.float32,
+    "review_32": np.float64,
     "review_36": bool,
     "review_37": bool,
     "soft_trust": bool,
@@ -341,15 +341,15 @@ FEATURE_TO_DTYPE = {
 }
 
 
-def read_table(mr_table) -> pd.DataFrame:
+def read_table(mr_table, columns_presented_in_train: OptionalColumns = None) -> pd.DataFrame:
     rows = list(yt.read_table(mr_table, format="yson", unordered=False))
     df = pd.DataFrame(rows)
 
     feature_dtype_to_value = {
         object: "",
         bool: False,
-        np.int32: 0,
-        np.float32: 0.0,
+        np.int64: 0,
+        np.float64: 0.0,
         np.int64: 0,
         np.uint64: 0,
     }
@@ -365,6 +365,26 @@ def read_table(mr_table) -> pd.DataFrame:
 
         columns_types[col] = col_desired_dtype
         # df[col] = df[col].astype(col_desired_dtype)
+
+    met_columns = set(columns_types.keys())
+
+    if len(set(ID_COLUMN_NAMES) & met_columns) != 3:
+        raise KeyError(f"Some of the obligatory columns ({ID_COLUMN_NAMES}) are missing!")
+
+    if columns_presented_in_train is not None:
+        columns_unpresented_in_df = list(set(columns_presented_in_train) - met_columns)
+
+        print(
+            f"Columns which aren't presented in the dataframe but the model was trained using them: {columns_unpresented_in_df}"
+        )
+
+        for col in columns_unpresented_in_df:
+            col_desired_dtype = FEATURE_TO_DTYPE[col]
+            nan_val_replacer = feature_dtype_to_value[col_desired_dtype]
+            print(col, nan_val_replacer, col_desired_dtype)
+            df[col] = nan_val_replacer
+
+        print("Added these columns as empties (nans) and processed")
 
     df = df.astype(columns_types)
 
@@ -398,13 +418,12 @@ def get_interactions_dataframes_for_train_and_test(
     date_delta_test = sr_date_test.max() - sr_date_test.min()
 
     extra_indices_test = np.where(sr_date_train >= sr_date_train.min() + date_delta_test)[0]
-
+    
     df_interactions_train = df_pure_data_train
     df_interactions_test = pd.concat(
         [df_pure_data_test, df_pure_data_train.iloc[extra_indices_test]],
         ignore_index=True,
     )
-
     initial_test_indices = np.arange(len(df_pure_data_test))
 
     return df_interactions_train, df_interactions_test, initial_test_indices
@@ -413,7 +432,7 @@ def get_interactions_dataframes_for_train_and_test(
 def find_constant_columns(df):
     constant_column_mask = (df == df.iloc[0]).all(axis=0).values
     constant_column_indices = np.where(constant_column_mask)[0]
-    constant_column_names = df.columns[constant_column_indices]
+    constant_column_names = list(df.columns[constant_column_indices].values)
 
     return constant_column_names
 
@@ -452,7 +471,7 @@ def transform_secretly_boolean_columns(df, column_names_and_true_values=None):
 
 
 def find_categorical_columns(df):
-    categorical_column_names = df.select_dtypes(include=["object"]).columns
+    categorical_column_names = list(df.select_dtypes(include=["object"]).columns.values)
 
     return categorical_column_names
 
@@ -494,7 +513,7 @@ def filter_and_process_columns_and_project_on_users(
     df_targets = df[target_names]
 
     if constant_column_names is None:
-        constant_column_names = find_constant_columns(df_targets)
+        constant_column_names = find_constant_columns(df_features)
     df_features_transformed = filter_constant_columns(df_features, column_names=constant_column_names)
 
     if secretly_boolean_column_names_and_true_values is None:
@@ -518,7 +537,7 @@ def filter_and_process_columns_and_project_on_users(
 
     colname_to_project = "userid"
     colnames_to_remove = ["orgid", "date", "time", HASH_COL]  # ID_COLUMN_NAMES + [HASH_COL]
-
+    # breakpoint()
     # print(f"\n\n\n{df_data.columns=}\n\n\n")
     if trust_names is not None:  # TEST MODE
         # need additional  handling of possible more categorical columns in test data:
@@ -550,7 +569,7 @@ def filter_and_process_columns_and_project_on_users(
         df_projected = pd.merge(
             left=_intermediate_merge,
             right=project_data_on_feature(
-                df=df_targets.iloc[initial_test_indices],
+                df=df_targets,
                 column_name_to_project=colname_to_project,
                 column_names_to_remove=colnames_to_remove,
                 count_column_name=FRAUD_COUNT_NAME,
@@ -568,7 +587,6 @@ def filter_and_process_columns_and_project_on_users(
             column_names_to_remove=colnames_to_remove,
             count_column_name=INTERACTION_COUNT_NAME,
         )
-    # breakpoint()
     return df_projected, constant_column_names, secretly_boolean_column_names_and_true_values, categorical_column_names
 
 
@@ -615,7 +633,7 @@ def separate_features_for_graph_and_tests(
     df_projected: pd.DataFrame,
     column_names_to_remove: MutableSet[str],
     test: bool = False,
-    target_thresholds: Tuple[float, float] = (0.1, 0.5),
+    target_thresholds: Optional[Tuple[float, float]] = (0.1, 0.5),
 ):
     def separate_counts(df, count_name):
         counts = df[count_name].values
@@ -625,8 +643,11 @@ def separate_features_for_graph_and_tests(
         _normal_threshold, fraud_threshold = target_thresholds
         targets = (df[TARGET_COL_NAME].values > fraud_threshold).astype(np.int64)
         return targets
-
-    df_filtered = filter_data_by_target(df_projected, target_thresholds=target_thresholds)
+    
+    if target_thresholds is not None:
+        df_filtered = filter_data_by_target(df_projected, target_thresholds=target_thresholds)
+    else:
+        df_filtered = df_projected
 
     feature_names = [column_name for column_name in df_filtered.columns if column_name not in column_names_to_remove]
 
@@ -639,7 +660,8 @@ def separate_features_for_graph_and_tests(
         trust_counts: np.ndarray = separate_counts(df_filtered, TRUST_COUNT_NAME)
         fraud_counts: np.ndarray = separate_counts(df_filtered, FRAUD_COUNT_NAME)
         trust_indicators: np.ndarray = df_filtered[TRUST_INDICATORS_NAMES].values.astype(float)
-
+        
+        # indices_test = df_projected["train"].v
         update_dict = dict(
             trust_counts=trust_counts,
             fraud_counts=fraud_counts,
@@ -701,6 +723,7 @@ def convert_split_indices_to_mask(num_samples, split_indices):
 def main_prepare_mr_tables(
     mr_tables: List[Dict[str, str]],
     token=None,
+    train_metadata: Optional[Dict[str, List[str]]] = None,
 ):
     print("mr_tables:", mr_tables)
 
@@ -710,7 +733,7 @@ def main_prepare_mr_tables(
 
     PARAMS_OUTPUT = {}
 
-    if len(mr_tables) == 2:  # TRAINING PHASE
+    if train_metadata is None:  # TRAINING PHASE
         PARAMS_OUTPUT["mode"] = "train"
 
         train_table = mr_tables[0]["table"]
@@ -719,7 +742,8 @@ def main_prepare_mr_tables(
         print("TESTING")
         test_df: pd.DataFrame = read_table(test_table)
         # breakpoint()
-
+        if set(TRUST_INDICATORS_NAMES) & set(test_df.columns.values) != set(TRUST_INDICATORS_NAMES):
+            test_df[TRUST_INDICATORS_NAMES] = -1.0
         # train_df.to_csv("train_df.csv")
         # test_df.to_csv("test_df.csv")
 
@@ -743,7 +767,7 @@ def main_prepare_mr_tables(
         print(df_interactions_train.head(), f"{df_interactions_train.shape=}, {df_interactions_train.columns}")
         print(df_interactions_test.head(), f"{df_interactions_test.shape=}, {df_interactions_test.columns}")
 
-        pure_target_names: list[str] = TARGETS_COLUMNS  # + [HASH_COL]
+        pure_target_names: list[str] = TARGETS_COLUMNS # + [HASH_COL]
         pure_trust_names: list[str] = TRUST_COLUMNS  # + [HASH_COL]
         pure_feature_names: list[str] = (
             ##[HASH_COL]
@@ -751,6 +775,8 @@ def main_prepare_mr_tables(
         )
 
         print(f"{pure_target_names=}\n{pure_trust_names=}\n{pure_feature_names=}")
+        
+
 
         (
             df_train_projected,
@@ -811,9 +837,28 @@ def main_prepare_mr_tables(
 
         print("Separated features for graph building")
 
+        features_in_train_df = (
+            list(
+                set(df_train_projected.columns.values)
+                - set(ID_COLUMN_NAMES)
+                - set([TARGET_COL_NAME])
+                - set(TRUST_COLUMNS)
+                - set([INTERACTION_COUNT_NAME])
+            )
+            + ID_COLUMN_NAMES
+        )
+
+        _train_metadata = dict(
+            features_in_train_df=features_in_train_df,
+            constant_column_names=constant_column_names,
+            secretly_boolean_column_names_and_true_values=secretly_boolean_column_names_and_true_values,
+            categorical_column_names=categorical_column_names,
+            train_df=train_df,
+        )
+
         num_samples_train = len(train_data["features"])
         indices_for_train, indices_for_validation = prepare_split_indices(num_samples_train, TRAIN_RATIO)
-
+        
         train_mask = convert_split_indices_to_mask(num_samples=num_samples_train, split_indices=indices_for_train)
         val_mask = convert_split_indices_to_mask(num_samples=num_samples_train, split_indices=indices_for_validation)
 
@@ -823,7 +868,8 @@ def main_prepare_mr_tables(
         indices_test = np.where(np.all(~np.isnan(test_data["trust_indicators"]), axis=1))[0]
 
         test_mask = convert_split_indices_to_mask(num_samples=num_samples_test, split_indices=indices_test)
-
+        
+        
         masks = dict(
             train_mask=train_mask,
             val_mask=val_mask,
@@ -835,23 +881,86 @@ def main_prepare_mr_tables(
         PARAMS_OUTPUT["train_data"] = train_data
         PARAMS_OUTPUT["test_data"] = test_data
         PARAMS_OUTPUT["masks"] = masks
+        PARAMS_OUTPUT["train_metadata"] = _train_metadata
 
     else:  # INFERENCE PHASE
         PARAMS_OUTPUT["mode"] = "test"
-
         test_table = mr_tables[0]["table"]
 
-        test_df: pd.DataFrame = read_table(test_table)
+            
+        train_ref_data = train_metadata["train_df"]
 
-        raise NotImplementedError("Work in progress")
+        features_in_train_df = train_metadata["features_in_train_df"]
+        constant_column_names = train_metadata["constant_column_names"]
+        secretly_boolean_column_names_and_true_values = train_metadata[
+            "secretly_boolean_column_names_and_true_values"
+        ]
+        categorical_column_names = train_metadata["categorical_column_names"]
 
-    # NOTE nirvana doesnt use custom encoders for jsons, thus, I need to cast all numpy arrays to lists:
+        test_df: pd.DataFrame = read_table(test_table, columns_presented_in_train=features_in_train_df)
+        test_df[TARGET_COL_NAME] = False  # NOTE this is placeholder
+        
+        if set(TRUST_INDICATORS_NAMES) & set(test_df.columns.values) != set(TRUST_INDICATORS_NAMES):
+            test_df[TRUST_INDICATORS_NAMES] = -1.0
+        
+        (
+            df_interactions_train,
+            df_interactions_test,
+            initial_test_indices,
+        ) = get_interactions_dataframes_for_train_and_test(train_ref_data, test_df)
+        
+        
+        test_df = df_interactions_test.copy()
+
+        df_test_projected, _, _, _ = filter_and_process_columns_and_project_on_users(
+            df=test_df,
+            feature_names=features_in_train_df,
+            target_names=TARGETS_COLUMNS,
+            constant_column_names=constant_column_names,
+            secretly_boolean_column_names_and_true_values=secretly_boolean_column_names_and_true_values,
+            categorical_column_names=categorical_column_names,
+            trust_names=TRUST_COLUMNS,
+            initial_test_indices=initial_test_indices,
+        )
+
+        print(f"Projected inference data on users, {df_test_projected.shape=}")
+
+        df_test_projected = df_test_projected.copy()
+
+        column_names_to_remove_test = [
+            INTERACTION_COUNT_NAME,
+            TRUST_COUNT_NAME,
+            FRAUD_COUNT_NAME,
+            TARGET_COL_NAME,
+        ] + TRUST_INDICATORS_NAMES
+
+        test_data: dict[str, Any] = separate_features_for_graph_and_tests(
+            df_projected=df_test_projected,
+            column_names_to_remove=column_names_to_remove_test,
+            test=True,
+            df_before_projection=test_df,
+            target_thresholds=None,
+        )
+        num_samples_test = len(test_data["features"])
+        # breakpoint()
+        indices_test = np.where(np.all(~np.isnan(test_data["trust_indicators"]), axis=1))[0]
+
+        test_mask = convert_split_indices_to_mask(num_samples=num_samples_test, split_indices=indices_test)
+
+        masks = dict(
+            test_mask=test_mask,
+        )
+
+        PARAMS_OUTPUT["test_data"] = test_data
+        PARAMS_OUTPUT["masks"] = masks
+        PARAMS_OUTPUT["train_metadata"] = train_metadata
+        
+        print("Created inference graph")
 
     return PARAMS_OUTPUT
 
 
 if __name__ == "__main__":
-    import ujson
     import os
 
     output = main_prepare_mr_tables(
@@ -867,5 +976,3 @@ if __name__ == "__main__":
         ],
         token=os.environ.get("YT_TOKEN"),
     )
-
-    ujson.dump(output, open("JSON_INPUT", "w"))

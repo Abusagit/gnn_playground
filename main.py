@@ -1,5 +1,4 @@
 import argparse
-import pickle
 import sys
 from pathlib import Path
 from typing import Mapping, Optional, Callable
@@ -16,6 +15,7 @@ import pandas as pd
 ##################### Nirvana ##########################################
 from nirvana_utils import copy_out_to_snapshot, copy_snapshot_to_out  ###
 from utils import (
+    Config,
     FEATURES_DATA_NAME,
     LABELS_DATA_NAME,
     MASK_DATA_NAME,
@@ -24,6 +24,7 @@ from utils import (
     construct_subgraph_from_blocks,
     init_dataloader,
     write_output_to_YT,
+    get_config,
 )
 
 ##################### Nirvana ##########################################
@@ -86,15 +87,19 @@ class TrainEval:
         output_nodes_labels = subgraph.ndata[LABELS_DATA_NAME][output_nodes_mask]
         output_nodes_ids = subgraph.ndata[USERID_DATA_NAME][output_nodes_mask]
 
-        if apply_train_val_mask:
-            logits = output_nodes_logits[output_nodes_train_mask]
-            labels = output_nodes_labels[output_nodes_train_mask]
-            ids = output_nodes_ids[output_nodes_train_mask]
+        # if apply_train_val_mask:
+        #     logits = output_nodes_logits[output_nodes_train_mask]
+        #     labels = output_nodes_labels[output_nodes_train_mask]
+        #     ids = output_nodes_ids[output_nodes_train_mask]
 
-        else:
-            logits = output_nodes_logits
-            labels = output_nodes_labels
-            ids = output_nodes_ids
+        # else:
+        #     logits = output_nodes_logits
+        #     labels = output_nodes_labels
+        #     ids = output_nodes_ids
+            
+        logits = output_nodes_logits[output_nodes_train_mask]
+        labels = output_nodes_labels[output_nodes_train_mask]
+        ids = output_nodes_ids[output_nodes_train_mask]
 
         return dict(
             output_nodes_train_val_mask=output_nodes_train_mask,
@@ -175,7 +180,7 @@ class TrainEval:
         for t, data in enumerate(tk, 1):
             subgraph: dgl.DGLGraph = self.get_subgraph_from_data(data)
 
-            return_dict = self.get_logits_and_labels_for_output_nodes(subgraph, apply_train_val_mask=False)
+            return_dict = self.get_logits_and_labels_for_output_nodes(subgraph)
 
             logits = return_dict["logits"]
             true_labels = return_dict["labels"]
@@ -234,6 +239,11 @@ class TrainEval:
             print(f"Valid Loss : {best_valid_loss}")
         else:
             f"The mode is {self.mode}, going straight to testing"
+            
+            
+        torch.save(self.model.state_dict(), "checkpoints/last-weights.pt")
+        print("Saved Last Weights")
+        copy_out_to_snapshot("checkpoints")
 
         if self.test_dataloader is not None:
             print("Performing test on test dataloader")
@@ -242,9 +252,6 @@ class TrainEval:
 
             return id2logits
 
-        torch.save(self.model.state_dict(), "checkpoints/last-weights.pt")
-        print("Saved Last Weights")
-        copy_out_to_snapshot("checkpoints")
 
         return {}
 
@@ -253,13 +260,6 @@ def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Graph Neural Network for fraud prediction")
     
     parser.add_argument("--datadir", type=Path, help="Directory with data", default="./data")
-    parser.add_argument(
-        "--model_type",
-        type=str,
-        choices=["GBDT", "GNN"],
-        default="GNN",
-        help="The direction of a program workflow",
-    )
 
     parser.add_argument("--mode", choices=["training", "inference"], default="training")
 
@@ -270,84 +270,69 @@ def get_parser() -> argparse.ArgumentParser:
         help="Indicator whether or not the data is already preprocessed and stored as a graph",
         default="json",
     )
-
+    
     parser.add_argument(
-        "--remove_self_loops",
-        action="store_true",
-        help="Whether or note to remove self loops from a graph",
+        "--device",
+        type=int,
+        default=None,
+        help="Device index for GPU"
     )
     
     parser.add_argument(
-        "--n_epochs",
-        type=int,
-        help="Number of training epochs",
-        default=1,
+        "--out_table_path",
+        type=str,
+        default="//home/yr/fvelikon/tmp",
+        help="Root directory for writing YT table with results"
     )
-
+    
+    
     parser.add_argument("--debug", action="store_true", help="Debug mode")
 
     return parser
 
 
-TRAINING_PARAMETERS = {
-    "batch_size": 30000,
-    "num_epochs": 1,
-    "max_num_neighbors": 50,  # -1 for all neighbors to be sampled
-    "learning_rate": 0.0003,
-    "weight_decay": 0.00001,
-    "val_every_steps": 5,
-    "early_stopping_steps": 40,
-    "num_workers": 12,
-}
-
-
-MODEL_PARAMS = {
-    "num_hidden_features": 128,
-    "normalisation_name": "batch",
-    "convolution_name": "sage",
-    "convolution_params": {
-        "aggregator_type": "mean",
-    },
-    "activation_name": "gelu",
-    "apply_skip_connection": True,
-    "num_preprocessing_layers": 1,
-    "num_encoder_layers": 2,
-    "num_predictor_layers": 1,
-    # "n_frequencies": 48,
-    # "frequency_scale": 0.02,
-    # "d_embedding": 16,
-}
-
 
 def main():
     args = get_parser().parse_args()
+    
+    if args.device is not None:
+        DEVICE = torch.device(f"cuda:{args.device}" if torch.cuda.is_available() else "cpu")
+    else:
+        DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    config: Config = get_config(config_dir=Path().cwd())
+    
     #############
     # IMPORTANT #
     #############
     copy_snapshot_to_out("checkpoints")
     datadir: Path = args.datadir
-    model_type: str = args.model_type
     data_dtype: str = args.data_type
     mode: str = args.mode
+    table_output_root_path: str = config.out_table_path
 
     print("Device is ", DEVICE)
 
     # NOTE: this is not the final implementation of training and evaluation!
     if mode == "training":
         weights_file = None
-
+        train_metadata_file = None
         print(f"The mode is {mode}, launching initial training...")
     else:
         weights_file = "checkpoints/last-weights.pt"
+        train_metadata_file = "checkpoints/train_metadata"
 
-        print(f"The mode is {mode}, picking preemtped weights...")
+        print(f"The mode is {mode}, picking preempted weights...")
 
     if data_dtype == "json":
         from utils import prepare_json_input
 
-        graphs, scaler = prepare_json_input(data_dir=datadir)
+        graphs, scaler, train_metadata = prepare_json_input(data_dir=datadir, train_metadata_file=train_metadata_file)
         joblib.dump(scaler, "checkpoints/scaler.bin")
+        
+        # breakpoint()
+        with open("checkpoints/train_metadata", "wb") as write_handler:
+            joblib.dump(train_metadata, write_handler)
 
     else:
         graphs_filename = str(datadir / "graphs_train_val_test.bin")  # this is predefined name, used for testing
@@ -356,7 +341,6 @@ def main():
         graphs[0].ndata[MASK_DATA_NAME] = graphs[0].ndata[MASK_DATA_NAME].bool()
         graphs[1].ndata[MASK_DATA_NAME] = graphs[1].ndata[MASK_DATA_NAME].bool()
         graphs[2].ndata[MASK_DATA_NAME] = graphs[2].ndata[MASK_DATA_NAME].bool()
-        
         
 
     if args.remove_self_loops:
@@ -370,87 +354,67 @@ def main():
         for i in range(3):
             graphs[i].ndata[USERID_DATA_NAME] = torch.arange(len(graphs[i].ndata[FEATURES_DATA_NAME]))
 
-    print("Successfully created graphs")
-
-    if model_type == "GBDT":
-        print("The mode is GBDT")
-        from xgboost import XGBClassifier
-
-        from utils import get_features_and_labels_from_a_graph
-
-        X_train, y_train = get_features_and_labels_from_a_graph(graph_train)
-        X_val, y_val = get_features_and_labels_from_a_graph(graph_valid)
-        X_test, y_test = get_features_and_labels_from_a_graph(graph_test)
-
-        model = XGBClassifier()
-        model.fit(X_train, y_train)
-        logits = model.predict_proba(X_test)[:, 1].reshape(-1)
+    print("Successfully created graphs")        
         
-        index2logits_df: pd.DataFrame = pd.DataFrame(
-            data={USERID_DATA_NAME: graph_test.ndata[USERID_DATA_NAME].numpy().reshape(-1), "score": logits},
-            columns=[USERID_DATA_NAME, "score"]
-        )
+    print("The mode is GNN")
+    from models.gnn_initial_and_plre import create_graph_model
+
+    MODEL_PARAMS.update(dict(num_input_features=num_input_features))
+    model = create_graph_model(model_name=model_type, model_params=MODEL_PARAMS).to(DEVICE)
+
+    loss_func = torch.nn.BCEWithLogitsLoss()
+    optimizer = torch.optim.Adam(
+        model.parameters(),
+        lr=TRAINING_PARAMETERS["learning_rate"],
+        weight_decay=TRAINING_PARAMETERS["weight_decay"],
+    )
+
+    sampler = dgl.dataloading.NeighborSampler(
+        fanouts=[TRAINING_PARAMETERS["max_num_neighbors"]] * MODEL_PARAMS["num_encoder_layers"]
+    )
+
+    batch_size = TRAINING_PARAMETERS["batch_size"]
+    num_workers = TRAINING_PARAMETERS["num_workers"]
+
+    train_loader = init_dataloader(graph_train, sampler, DEVICE, batch_size=batch_size, num_workers=num_workers)
+    val_loader = init_dataloader(
+        graph_valid, sampler, DEVICE, shuffle=False, batch_size=batch_size, num_workers=num_workers
+    )
+    test_loader = init_dataloader(
+        graph_test, sampler, DEVICE, shuffle=False, batch_size=batch_size, num_workers=num_workers
+    )
+
+    trainer = TrainEval(
+        model=model,
+        train_dataloader=train_loader,
+        val_dataloader=val_loader,
+        test_dataloader=test_loader,
+        optimizer=optimizer,
+        criterion=loss_func,
+        device=DEVICE,
+        batch_size=batch_size,
+        mode=mode,
+        num_epochs=TRAINING_PARAMETERS["num_epochs"],
+        val_every_steps=TRAINING_PARAMETERS["val_every_steps"],
+        state_dict_file=weights_file,
+    )
+    print("Initialized trainer")
+    index2logits_df: pd.DataFrame = trainer.train_and_test()
+
+    
+    # properly format the output
+    
+    index2logits_df[USERID_DATA_NAME] = index2logits_df[USERID_DATA_NAME].apply(lambda x: f"/user/{x}")
+    print(index2logits_df)
+    
         
-        
-
-        joblib.dump(model, "checkpoints/xgboost_model.bin")
-
-    else:
-        
-        TRAINING_PARAMETERS["num_epochs"] = args.n_epochs
-        
-        print("The mode is GNN")
-        from models.gnn_initial_and_plre import create_graph_model
-
-        MODEL_PARAMS.update(dict(num_input_features=num_input_features))
-        model = create_graph_model(model_name=model_type, model_params=MODEL_PARAMS).to(DEVICE)
-
-        loss_func = torch.nn.BCEWithLogitsLoss()
-        optimizer = torch.optim.Adam(
-            model.parameters(),
-            lr=TRAINING_PARAMETERS["learning_rate"],
-            weight_decay=TRAINING_PARAMETERS["weight_decay"],
-        )
-
-        sampler = dgl.dataloading.NeighborSampler(
-            fanouts=[TRAINING_PARAMETERS["max_num_neighbors"]] * MODEL_PARAMS["num_encoder_layers"]
-        )
-
-        batch_size = TRAINING_PARAMETERS["batch_size"]
-        num_workers = TRAINING_PARAMETERS["num_workers"]
-
-        train_loader = init_dataloader(graph_train, sampler, DEVICE, batch_size=batch_size, num_workers=num_workers)
-        val_loader = init_dataloader(
-            graph_valid, sampler, DEVICE, shuffle=False, batch_size=batch_size, num_workers=num_workers
-        )
-        test_loader = init_dataloader(
-            graph_test, sampler, DEVICE, shuffle=False, batch_size=batch_size, num_workers=num_workers
-        )
-
-        trainer = TrainEval(
-            model=model,
-            train_dataloader=train_loader,
-            val_dataloader=val_loader,
-            test_dataloader=test_loader,
-            optimizer=optimizer,
-            criterion=loss_func,
-            device=DEVICE,
-            batch_size=batch_size,
-            mode=mode,
-            num_epochs=TRAINING_PARAMETERS["num_epochs"],
-            val_every_steps=TRAINING_PARAMETERS["val_every_steps"],
-            state_dict_file=weights_file,
-        )
-        print("Initialized trainer")
-        index2logits_df: pd.DataFrame = trainer.train_and_test()
-
-        
-        print(index2logits_df.head())
-        
+    index2logits_df.to_csv("index2logits_df.csv")
     index2logits_list_of_dicts = index2logits_df.to_dict('records')
     
     
-    mr_table_output: dict[str, str] = write_output_to_YT(output=index2logits_list_of_dicts)
+    
+    mr_table_output: dict[str, str] = write_output_to_YT(output=index2logits_list_of_dicts, 
+                                                         table_path_root=table_output_root_path)
     
     with open(OUTPUT_FILE_NAME, "w") as out_handler:
         for line in map(ujson.dumps, index2logits_list_of_dicts):
