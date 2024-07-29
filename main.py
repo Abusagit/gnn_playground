@@ -85,20 +85,20 @@ class TrainEval:
         output_nodes_labels = subgraph.ndata[LABELS_DATA_NAME][output_nodes_mask]
         output_nodes_ids = subgraph.ndata[USERID_DATA_NAME][output_nodes_mask]
 
-        if apply_train_val_mask:
-            logits = output_nodes_logits[output_nodes_train_mask]
-            labels = output_nodes_labels[output_nodes_train_mask]
-            ids = output_nodes_ids[output_nodes_train_mask]
+        # if apply_train_val_mask:
+        #     logits = output_nodes_logits[output_nodes_train_mask]
+        #     labels = output_nodes_labels[output_nodes_train_mask]
+        #     ids = output_nodes_ids[output_nodes_train_mask]
 
-        else:
-            logits = output_nodes_logits
-            labels = output_nodes_labels
-            ids = output_nodes_ids
+        # else:
+        #     logits = output_nodes_logits
+        #     labels = output_nodes_labels
+        #     ids = output_nodes_ids
         
         # NOTE need to fix this to be able to compare results with previous
-        # logits = output_nodes_logits[output_nodes_train_mask]
-        # labels = output_nodes_labels[output_nodes_train_mask]
-        # ids = output_nodes_ids[output_nodes_train_mask]
+        logits = output_nodes_logits[output_nodes_train_mask]
+        labels = output_nodes_labels[output_nodes_train_mask]
+        ids = output_nodes_ids[output_nodes_train_mask]
 
         return dict(
             output_nodes_train_val_mask=output_nodes_train_mask,
