@@ -4,7 +4,7 @@ import string
 import sys
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, List, Optional, Dict
+from typing import Any, List, Optional, Dict, ClassVar
 
 from dataclasses import dataclass
 import yaml
@@ -56,7 +56,7 @@ class Config:
     
     # Convolutiom parameters
     convolution_name: str = "sage"
-    convolution_params: Dict[str, str] = {
+    convolution_params: ClassVar[Dict[str, str]] = {
         "aggregator_type": "mean",
     }
     
