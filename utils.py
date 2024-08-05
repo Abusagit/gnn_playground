@@ -118,7 +118,7 @@ def get_config(config_dir: Path):
         raise f"No configs were found in {str(config_dir)}. Supported names are 'config.json' and 'config.yaml'"
 
     with open(yaml_config) as f_read:
-        config_dict: Dict[str, Any] = yaml.open(f_read)
+        config_dict: Dict[str, Any] = yaml.safe_load(f_read)
         
     config = Config(**config_dict)
     
