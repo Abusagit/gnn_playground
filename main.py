@@ -281,14 +281,6 @@ def get_parser() -> argparse.ArgumentParser:
         help="Device index for GPU"
     )
     
-    parser.add_argument(
-        "--out_table_path",
-        type=str,
-        default="//home/yr/fvelikon/tmp",
-        help="Root directory for writing YT table with results"
-    )
-    
-    
     parser.add_argument("--debug", action="store_true", help="Debug mode")
 
     return parser
@@ -313,7 +305,7 @@ def main():
     mode: str = args.mode
     debug_mode: bool = args.debug
     config: Config = get_config(config_dir=Path().cwd()) if not debug_mode else Config() # default options for debugging
-    table_output_root_path: str = config.out_table_path
+    table_output_root_path: str = config.table_output_root_path
 
     MODEL_PARAMS = config.MODEL_PARAMS
     TRAINING_PARAMETERS = config.TRAINING_PARAMS
