@@ -39,7 +39,7 @@ class Config:
     model_type: str = "GNN"
     
     # Training parameters
-    batch_size: int = 2000000
+    batch_size: int = 10000
     num_epochs: int = 1
     max_num_neighbors: int = -1 # -1 for all neighbors to be sampled
     
@@ -226,8 +226,11 @@ def construct_subgraph_from_blocks(
     row_coords, col_coords = merged_block.edges()
 
     new_graph = dgl.graph(data=(row_coords, col_coords))
+    
 
     for node_data_name in node_attributes_to_copy:
+        print(f"{merged_block.srcdata[node_data_name].shape=} {new_graph.num_nodes()=} {merged_block.num_nodes()=}")
+
         new_graph.ndata[node_data_name] = merged_block.srcdata[node_data_name]
 
     # create mask marking only destination nodes, which are needed for
