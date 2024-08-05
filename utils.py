@@ -36,10 +36,11 @@ class Config:
     # Data options
     remove_self_loops: bool = True
     table_output_root_path: str = "//home/yr/fvelikon/tmp"
+    model_type: str = "GNN"
     
     # Training parameters
     batch_size: int = 2000000
-    num_epochs: int = 150
+    num_epochs: int = 1
     max_num_neighbors: int = -1 # -1 for all neighbors to be sampled
     
     num_workers: int = 12
@@ -111,7 +112,7 @@ class Config:
         
 
 def get_config(config_dir: Path):
-    yaml_config = config_dir / "config.yaml"
+    yaml_config = config_dir / "CONFIG.yaml"
     
     if not yaml_config.exists():
         raise f"No configs were found in {str(config_dir)}. Supported names are 'config.json' and 'config.yaml'"

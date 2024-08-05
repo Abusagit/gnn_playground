@@ -27,6 +27,9 @@ from utils import (
     get_config,
 )
 
+from models.gnn_initial_and_plre import create_graph_model
+
+
 ##################### Nirvana ##########################################
 
 OUTPUT_FILE_NAME = "index2logit"
@@ -87,20 +90,19 @@ class TrainEval:
         output_nodes_labels = subgraph.ndata[LABELS_DATA_NAME][output_nodes_mask]
         output_nodes_ids = subgraph.ndata[USERID_DATA_NAME][output_nodes_mask]
 
-        if apply_train_val_mask:
-            logits = output_nodes_logits[output_nodes_train_mask]
-            labels = output_nodes_labels[output_nodes_train_mask]
-            ids = output_nodes_ids[output_nodes_train_mask]
+        # if apply_train_val_mask:
+        #     logits = output_nodes_logits[output_nodes_train_mask]
+        #     labels = output_nodes_labels[output_nodes_train_mask]
+        #     ids = output_nodes_ids[output_nodes_train_mask]
 
-        else:
-            logits = output_nodes_logits
-            labels = output_nodes_labels
-            ids = output_nodes_ids
+        # else:
+        #     logits = output_nodes_logits
+        #     labels = output_nodes_labels
+        #     ids = output_nodes_ids
         
-        # TODO rebase changes to previous state
-        # logits = output_nodes_logits[output_nodes_train_mask]
-        # labels = output_nodes_labels[output_nodes_train_mask]
-        # ids = output_nodes_ids[output_nodes_train_mask]
+        logits = output_nodes_logits[output_nodes_train_mask]
+        labels = output_nodes_labels[output_nodes_train_mask]
+        ids = output_nodes_ids[output_nodes_train_mask]
 
         return dict(
             output_nodes_train_val_mask=output_nodes_train_mask,
@@ -301,7 +303,6 @@ def main():
     else:
         DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    config: Config = get_config(config_dir=Path().cwd())
     
     #############
     # IMPORTANT #
@@ -310,7 +311,12 @@ def main():
     datadir: Path = args.datadir
     data_dtype: str = args.data_type
     mode: str = args.mode
+    debug_mode: bool = args.debug
+    config: Config = get_config(config_dir=Path().cwd()) if not debug_mode else Config() # default options for debugging
     table_output_root_path: str = config.out_table_path
+
+    MODEL_PARAMS = config.MODEL_PARAMS
+    TRAINING_PARAMETERS = config.TRAINING_PARAMS
 
     print("Device is ", DEVICE)
 
@@ -334,6 +340,8 @@ def main():
         # breakpoint()
         with open("checkpoints/train_metadata", "wb") as write_handler:
             joblib.dump(train_metadata, write_handler)
+        
+        print("Successfully created graphs")
 
     else:
         graphs_filename = str(datadir / "graphs_train_val_test.bin")  # this is predefined name, used for testing
@@ -343,8 +351,10 @@ def main():
         graphs[1].ndata[MASK_DATA_NAME] = graphs[1].ndata[MASK_DATA_NAME].bool()
         graphs[2].ndata[MASK_DATA_NAME] = graphs[2].ndata[MASK_DATA_NAME].bool()
         
+        print("Read preprocessed graphs from provided file")
+        
 
-    if args.remove_self_loops:
+    if config.remove_self_loops:
         [graph_train, graph_valid, graph_test] = [remove_self_loop(g) for g in graphs]
     else:
         graph_train, graph_valid, graph_test = graphs
@@ -354,14 +364,14 @@ def main():
     if USERID_DATA_NAME not in graphs[0].ndata:
         for i in range(3):
             graphs[i].ndata[USERID_DATA_NAME] = torch.arange(len(graphs[i].ndata[FEATURES_DATA_NAME]))
+        
+        print("userid data isn't provided, assigning each node its relative index")
 
     print("Successfully created graphs")        
         
-    print("The mode is GNN")
-    from models.gnn_initial_and_plre import create_graph_model
 
     MODEL_PARAMS.update(dict(num_input_features=num_input_features))
-    model = create_graph_model(model_name=model_type, model_params=MODEL_PARAMS).to(DEVICE)
+    model = create_graph_model(model_name=config.model_type, model_params=MODEL_PARAMS).to(DEVICE)
 
     loss_func = torch.nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(
@@ -399,6 +409,7 @@ def main():
         val_every_steps=TRAINING_PARAMETERS["val_every_steps"],
         state_dict_file=weights_file,
     )
+    
     print("Initialized trainer")
     index2logits_df: pd.DataFrame = trainer.train_and_test()
 
@@ -408,24 +419,22 @@ def main():
     index2logits_df[USERID_DATA_NAME] = index2logits_df[USERID_DATA_NAME].apply(lambda x: f"/user/{x}")
     print(index2logits_df)
     
-        
     index2logits_df.to_csv("index2logits_df.csv")
     index2logits_list_of_dicts = index2logits_df.to_dict('records')
-    
-    
-    
-    mr_table_output: dict[str, str] = write_output_to_YT(output=index2logits_list_of_dicts, 
-                                                         table_path_root=table_output_root_path)
     
     with open(OUTPUT_FILE_NAME, "w") as out_handler:
         for line in map(ujson.dumps, index2logits_list_of_dicts):
             print(line, file=out_handler)
             
-    with open("MR_TABLE", "w") as out_handler:
-        ujson.dump(mr_table_output, out_handler)
-        
-    
-    
+    if not debug_mode:
+        mr_table_output: dict[str, str] = write_output_to_YT(output=index2logits_list_of_dicts, 
+                                                            table_path_root=table_output_root_path)
+                
+        with open("MR_TABLE", "w") as out_handler:
+            ujson.dump(mr_table_output, out_handler)
+    else:
+        print("Debug mode is activated, skipping uploading to YT")
+            
     copy_out_to_snapshot("checkpoints", dump=True)
 
 if __name__ == "__main__":
