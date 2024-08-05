@@ -39,8 +39,8 @@ class Config:
     model_type: str = "GNN"
     
     # Training parameters
-    batch_size: int = 10000
-    num_epochs: int = 1
+    batch_size: int = 2000000
+    num_epochs: int = 75
     max_num_neighbors: int = -1 # -1 for all neighbors to be sampled
     
     num_workers: int = 12
@@ -222,16 +222,22 @@ def construct_subgraph_from_blocks(
     """
 
     merged_block = deepcopy(dgl.merge([dgl.block_to_graph(b) for b in blocks]))
+    # merged_block = dgl.merge([dgl.block_to_graph(b) for b in blocks])
 
     row_coords, col_coords = merged_block.edges()
 
-    new_graph = dgl.graph(data=(row_coords, col_coords))
+    number_of_nodes = merged_block.srcdata[FEATURES_DATA_NAME].shape[0]
+    
+    new_graph = dgl.graph(data=(row_coords, col_coords), num_nodes=number_of_nodes)
     
 
     for node_data_name in node_attributes_to_copy:
-        print(f"{merged_block.srcdata[node_data_name].shape=} {new_graph.num_nodes()=} {merged_block.num_nodes()=}")
 
-        new_graph.ndata[node_data_name] = merged_block.srcdata[node_data_name]
+        try:
+            new_graph.ndata[node_data_name] = merged_block.srcdata[node_data_name]
+        except dgl._ffi.base.DGLError as e:
+            print(f"{node_data_name=} {merged_block.srcdata[node_data_name].shape=} {new_graph.num_nodes()=} {merged_block.num_nodes()=}")
+            raise e
 
     # create mask marking only destination nodes, which are needed for
     num_of_nodes = new_graph.num_nodes()
